@@ -8,8 +8,7 @@ const clientConfig = {
     85:  "GDhkZy8h9CtjAOPPKlgR",
     110: "tFKqGwFxE5Ka5626we5X"
   },
-  ghlBearerToken: process.env.GHL_BEARER_TOKEN || "pit-fb11d1b0-f062-492e-a5a7-c51b09e1d9cb",
-  // Retell posts booking data here — Railway endpoint
+  ghlBearerToken: "pit-fb285c5d-a16c-45be-adce-f35d0722bd52",
   bookingWebhookUrl: "https://sova-deploy-production.up.railway.app/create-ghl-booking",
   voiceId: "custom_voice_b315a4ce2cf96a8aa40254b66e",
   llmModel: "gpt-4.1",
