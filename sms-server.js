@@ -136,12 +136,27 @@ function isCancellation(message) {
   return ['cancel','cancellation','need to cancel','want to cancel',"can't make it",'cannot make it',"won't be able",'reschedule','need to reschedule','move my appointment','change my appointment'].some(t => lower.includes(t));
 }
 
+function normalizePhone(phone) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  if (phone.startsWith("+")) return `+${digits}`;
+  return phone;
+}
+
 async function sendGhlSms(toPhone, message) {
+  const normalizedPhone = normalizePhone(toPhone);
+  console.log(`[SEND SMS] To: ${toPhone} normalized: ${normalizedPhone}`);
   const contactRes = await fetch(`https://services.leadconnectorhq.com/contacts/search/phone?phone=${encodeURIComponent(toPhone)}&locationId=${CONFIG.ghlLocationId}`, { headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, Version: '2021-04-15' } });
   let contactId = null;
   if (contactRes.ok) { const d = await contactRes.json(); contactId = d?.contacts?.[0]?.id || null; }
-  const payload = { type: 'SMS', message, fromNumber: CONFIG.ghlFromNumber, toNumber: toPhone, locationId: CONFIG.ghlLocationId };
-  if (contactId) payload.contactId = contactId;
+  if (!contactId) {
+    console.log('[SEND SMS] Creating contact for ' + normalizedPhone);
+    const cr = await fetch('https://services.leadconnectorhq.com/contacts/', { method: 'POST', headers: { Authorization: 'Bearer ' + CONFIG.ghlBearerToken, 'Content-Type': 'application/json', Version: '2021-07-28' }, body: JSON.stringify({ locationId: CONFIG.ghlLocationId, phone: normalizedPhone }) });
+    if (cr.ok) { const cd = await cr.json(); contactId = cd && cd.contact && cd.contact.id ? cd.contact.id : null; console.log('[SEND SMS] Created contact: ' + contactId); }
+  }
+  if (!contactId) throw new Error('No contactId for ' + normalizedPhone);
+  const payload = { type: 'SMS', message, fromNumber: CONFIG.ghlFromNumber, toNumber: normalizedPhone, locationId: CONFIG.ghlLocationId, contactId };
   const smsRes = await fetch('https://services.leadconnectorhq.com/conversations/messages/outbound', { method: 'POST', headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, 'Content-Type': 'application/json', Version: '2021-04-15' }, body: JSON.stringify(payload) });
   if (!smsRes.ok) { const e = await smsRes.text(); throw new Error(`GHL SMS send failed: ${smsRes.status} — ${e}`); }
   return await smsRes.json();
