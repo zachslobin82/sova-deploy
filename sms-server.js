@@ -147,7 +147,7 @@ function normalizePhone(phone) {
 async function sendGhlSms(toPhone, message) {
   const normalizedPhone = normalizePhone(toPhone);
   console.log(`[SEND SMS] To: ${toPhone} normalized: ${normalizedPhone}`);
-  let conversationId = null;
+  let conversationId = null, conversationProviderId = null;
   let contactId = null;
   const convRes = await fetch(`https://services.leadconnectorhq.com/conversations/search?locationId=${CONFIG.ghlLocationId}&q=${encodeURIComponent(normalizedPhone)}`, { headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, Version: '2021-04-15' } });
   console.log('[SEND SMS] Conv search status: ' + convRes.status);
@@ -155,13 +155,14 @@ async function sendGhlSms(toPhone, message) {
     const cd = await convRes.json();
     console.log('[SEND SMS] Conv search result: ' + JSON.stringify(cd).substring(0, 200));
     const conv = cd && cd.conversations && cd.conversations[0] ? cd.conversations[0] : null;
-    if (conv) { conversationId = conv.id || null; contactId = conv.contactId || null; console.log('[SEND SMS] Found conversation: ' + conversationId + ' contactId: ' + contactId); }
+    if (conv) { conversationId = conv.id || null; contactId = conv.contactId || null; conversationProviderId = conv.conversationProviderId || null; console.log('[SEND SMS] Found conversation: ' + conversationId + ' contactId: ' + contactId + ' providerId: ' + conversationProviderId); }
     else { console.warn('[SEND SMS] No conversation found for ' + normalizedPhone); }
   } else { const e = await convRes.text(); console.warn('[SEND SMS] Conv search failed: ' + convRes.status + ' ' + e); }
   if (!conversationId && !contactId) throw new Error('No conversationId or contactId for ' + normalizedPhone);
   const payload = { type: 'SMS', message, fromNumber: CONFIG.ghlFromNumber, toNumber: normalizedPhone, locationId: CONFIG.ghlLocationId };
   if (conversationId) payload.conversationId = conversationId;
   if (contactId) payload.contactId = contactId;
+  if (conversationProviderId) payload.conversationProviderId = conversationProviderId;
   const smsRes = await fetch('https://services.leadconnectorhq.com/conversations/messages/outbound', { method: 'POST', headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, 'Content-Type': 'application/json', Version: '2021-04-15' }, body: JSON.stringify(payload) });
   if (!smsRes.ok) { const e = await smsRes.text(); throw new Error(`GHL SMS send failed: ${smsRes.status} — ${e}`); }
   return await smsRes.json();
