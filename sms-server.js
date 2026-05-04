@@ -150,8 +150,10 @@ async function sendGhlSms(toPhone, message) {
   let conversationId = null;
   let contactId = null;
   const convRes = await fetch(`https://services.leadconnectorhq.com/conversations/search?locationId=${CONFIG.ghlLocationId}&q=${encodeURIComponent(normalizedPhone)}`, { headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, Version: '2021-04-15' } });
+  console.log('[SEND SMS] Conv search status: ' + convRes.status);
   if (convRes.ok) {
     const cd = await convRes.json();
+    console.log('[SEND SMS] Conv search result: ' + JSON.stringify(cd).substring(0, 200));
     const conv = cd && cd.conversations && cd.conversations[0] ? cd.conversations[0] : null;
     if (conv) { conversationId = conv.id || null; contactId = conv.contactId || null; console.log('[SEND SMS] Found conversation: ' + conversationId + ' contactId: ' + contactId); }
     else { console.warn('[SEND SMS] No conversation found for ' + normalizedPhone); }
