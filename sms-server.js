@@ -163,7 +163,7 @@ async function sendGhlSms(toPhone, message) {
   if (conversationId) payload.conversationId = conversationId;
   if (contactId) payload.contactId = contactId;
   if (conversationProviderId) payload.conversationProviderId = conversationProviderId;
-  const smsRes = await fetch('https://services.leadconnectorhq.com/conversations/messages/outbound', { method: 'POST', headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, 'Content-Type': 'application/json', Version: '2021-04-15' }, body: JSON.stringify(payload) });
+  const smsRes = await fetch('https://services.leadconnectorhq.com/conversations/messages', { method: 'POST', headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, 'Content-Type': 'application/json', Version: '2021-04-15' }, body: JSON.stringify(payload) });
   if (!smsRes.ok) { const e = await smsRes.text(); throw new Error(`GHL SMS send failed: ${smsRes.status} — ${e}`); }
   return await smsRes.json();
 }
