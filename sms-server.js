@@ -147,10 +147,18 @@ function normalizePhone(phone) {
 async function sendGhlSms(toPhone, message) {
   const normalizedPhone = normalizePhone(toPhone);
   console.log(`[SEND SMS] To: ${toPhone} normalized: ${normalizedPhone}`);
-  const contactRes = await fetch(`https://services.leadconnectorhq.com/contacts/search/phone?phone=${encodeURIComponent(toPhone)}&locationId=${CONFIG.ghlLocationId}`, { headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, Version: '2021-04-15' } });
+  let conversationId = null;
   let contactId = null;
-  if (contactRes.ok) { const d = await contactRes.json(); contactId = d?.contacts?.[0]?.id || null; }
+  const convRes = await fetch(`https://services.leadconnectorhq.com/conversations/search?locationId=${CONFIG.ghlLocationId}&q=${encodeURIComponent(normalizedPhone)}`, { headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, Version: '2021-04-15' } });
+  if (convRes.ok) {
+    const cd = await convRes.json();
+    const conv = cd && cd.conversations && cd.conversations[0] ? cd.conversations[0] : null;
+    if (conv) { conversationId = conv.id || null; contactId = conv.contactId || null; console.log('[SEND SMS] Found conversation: ' + conversationId + ' contactId: ' + contactId); }
+    else { console.warn('[SEND SMS] No conversation found for ' + normalizedPhone); }
+  } else { const e = await convRes.text(); console.warn('[SEND SMS] Conv search failed: ' + convRes.status + ' ' + e); }
+  if (!conversationId && !contactId) throw new Error('No conversationId or contactId for ' + normalizedPhone);
   const payload = { type: 'SMS', message, fromNumber: CONFIG.ghlFromNumber, toNumber: normalizedPhone, locationId: CONFIG.ghlLocationId };
+  if (conversationId) payload.conversationId = conversationId;
   if (contactId) payload.contactId = contactId;
   const smsRes = await fetch('https://services.leadconnectorhq.com/conversations/messages/outbound', { method: 'POST', headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, 'Content-Type': 'application/json', Version: '2021-04-15' }, body: JSON.stringify(payload) });
   if (!smsRes.ok) { const e = await smsRes.text(); throw new Error(`GHL SMS send failed: ${smsRes.status} — ${e}`); }
