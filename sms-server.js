@@ -25,7 +25,7 @@ const CONFIG = {
   openAiApiKey: process.env.OPENAI_API_KEY || 'YOUR_OPENAI_API_KEY',
 
   // GHL
-  ghlBearerToken: 'pit-fb11d1b0-f062-492e-a5a7-c51b09e1d9cb',
+  ghlBearerToken: 'pit-fb285c5d-a16c-45be-adce-f35d0722bd52',
   ghlLocationId:  'i354kGTSmTlt3zeEVsCG',
   ghlFromNumber:  '+18605904699',   // TMW GHL number
 
