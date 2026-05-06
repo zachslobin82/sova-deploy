@@ -213,7 +213,7 @@ async function sendGhlSms(toPhone, message) {
     {
       headers: {
         Authorization: `Bearer ${CONFIG.ghlBearerToken}`,
-        Version: '2021-04-15',
+        Version: '2021-07-28',
       },
     }
   );
@@ -240,7 +240,7 @@ async function sendGhlSms(toPhone, message) {
     headers: {
       Authorization: `Bearer ${CONFIG.ghlBearerToken}`,
       'Content-Type': 'application/json',
-      Version: '2021-04-15',
+      Version: '2021-07-28',
     },
     body: JSON.stringify(payload),
   });
