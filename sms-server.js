@@ -237,7 +237,7 @@ async function sendGhlSms(toPhone, message) {
 
   if (contactId) payload.contactId = contactId;
 
-  const smsRes = await fetch('https://services.leadconnectorhq.com/conversations/messages/outbound', {
+  const smsRes = await fetch('https://services.leadconnectorhq.com/conversations/messages', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${CONFIG.ghlBearerToken}`,
