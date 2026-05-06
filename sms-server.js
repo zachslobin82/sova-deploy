@@ -270,6 +270,26 @@ async function sendGhlSms(toPhone, message) {
 // ALERT CAROLYN via SMS
 // Fires when a client cancels via text
 // ----------------------------------------------------------------------------
+function isBookingComplete(mayaReply) {
+  const r = mayaReply.toLowerCase();
+  return (r.includes("you're all set") || r.includes("youre all set") || r.includes("we'll see you") || r.includes("well see you") || r.includes("we will see you")) &&
+    (r.includes("massage") || r.includes("facial") || r.includes("float") || r.includes("sauna") || r.includes("therapy") || r.includes("service"));
+}
+
+async function alertSlack(clientPhone, mayaReply, conversationHistory) {
+  const webhookUrl = 'process.env.SLACK_WEBHOOK_URL';
+  const lastMessages = conversationHistory.slice(-10).map(m => `${m.role === 'user' ? 'Client' : 'Maya'}: ${m.content}`).join('\n');
+  const payload = {
+    text: `📅 *New Booking via Maya SMS*\n*Client phone:* ${clientPhone}\n\n*Booking summary:*\n${mayaReply}\n\n*Conversation:*\n\`\`\`${lastMessages}\`\`\`\n\n_Mirror this into Boulevard and confirm the exact time._`
+  };
+  try {
+    await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    console.log('[SLACK ALERT] Booking alert sent');
+  } catch (err) {
+    console.error('[SLACK ALERT] Failed:', err.message);
+  }
+}
+
 async function alertCarolyn(clientPhone, clientMessage) {
   const alertMessage =
     `Maya Alert: Client (${clientPhone}) cancelled via text.\n` +
@@ -337,6 +357,12 @@ app.post('/sms-inbound', async (req, res) => {
     // --- Send reply via GHL ---
     await sendGhlSms(clientPhone, mayaReply);
     console.log(`[SMS SENT] To: ${clientPhone}`);
+
+    // --- Fire Slack alert if booking is complete ---
+    if (isBookingComplete(mayaReply)) {
+      const history = conversations.get(clientPhone) || [];
+      await alertSlack(clientPhone, mayaReply, history);
+    }
 
   } catch (err) {
     console.error('[ERROR]', err.message);
