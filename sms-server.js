@@ -207,6 +207,8 @@ function isCancellation(message) {
 // Uses GHL's conversation API to send an outbound SMS from Maya's number
 // ----------------------------------------------------------------------------
 async function sendGhlSms(toPhone, message) {
+  const d = toPhone.replace(/\D/g, '');
+  toPhone = '+' + (d.length === 10 ? '1' + d : d);
   // First, get or create a conversation for this contact
   const contactRes = await fetch(
     `https://services.leadconnectorhq.com/contacts/search/phone?phone=${encodeURIComponent(toPhone)}&locationId=${CONFIG.ghlLocationId}`,
