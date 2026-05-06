@@ -211,7 +211,7 @@ async function sendGhlSms(toPhone, message) {
   toPhone = '+' + (d.length === 10 ? '1' + d : d);
   // First, get or create a conversation for this contact
   const contactRes = await fetch(
-    `https://services.leadconnectorhq.com/contacts/search/phone?phone=${encodeURIComponent(toPhone)}&locationId=${CONFIG.ghlLocationId}`,
+    `https://services.leadconnectorhq.com/contacts/?locationId=${CONFIG.ghlLocationId}&query=${encodeURIComponent(toPhone)}`,
     {
       headers: {
         Authorization: `Bearer ${CONFIG.ghlBearerToken}`,
