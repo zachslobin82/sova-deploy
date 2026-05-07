@@ -121,6 +121,22 @@ CANCELLATION
 NEVER: Mention Boulevard | Send more than one question per message | Push upsell more than once | Write more than 2-3 sentences`;
 
 // ----------------------------------------------------------------------------
+// FLOW STATE DETECTOR
+// Tells GPT exactly where in the conversation flow we are
+// ----------------------------------------------------------------------------
+function detectFlowState(history) {
+  const lastAssistant = [...history].reverse().find(m => m.role === 'assistant')?.content?.toLowerCase() || '';
+  if (lastAssistant.includes('were you looking to book') || lastAssistant.includes('book an appointment')) return 'OPENING_SENT — waiting for client to say they want to book or ask a question';
+  if (lastAssistant.includes('brings you in')) return 'STEP1_COMPLETE — waiting for client to say why they are coming in';
+  if (lastAssistant.includes('which sounds best') || lastAssistant.includes('which works better') || lastAssistant.includes('which sounds more')) return 'STEP2_COMPLETE — waiting for client to choose their service/duration';
+  if (lastAssistant.includes('hot stones') && !lastAssistant.includes('infrared')) return 'ADDON_OFFERED — waiting for yes or no to hot stones upsell. If yes, offer sauna. If no, send booking link immediately.';
+  if (lastAssistant.includes('aromatherapy') && !lastAssistant.includes('infrared')) return 'ADDON_OFFERED — waiting for yes or no to aromatherapy upsell. If yes, offer sauna. If no, send booking link immediately.';
+  if (lastAssistant.includes('infrared sauna') && lastAssistant.includes('want to add')) return 'SAUNA_OFFERED — waiting for yes or no to sauna upsell. Either way, send booking link next. DO NOT ask any more questions.';
+  if (lastAssistant.includes('booking link') || lastAssistant.includes('lock in your time') || lastAssistant.includes('api.gohighlevel.com')) return 'BOOKING_LINK_SENT — conversation complete. If client replies, answer any questions about their booking.';
+  return 'START — conversation just beginning';
+}
+
+// ----------------------------------------------------------------------------
 // GPT-4.1 CALL
 // ----------------------------------------------------------------------------
 async function getMayaResponse(clientPhone, incomingMessage) {
@@ -137,7 +153,7 @@ async function getMayaResponse(clientPhone, incomingMessage) {
       model: 'gpt-4.1',
       max_tokens: 300,
       messages: [
-        { role: 'system', content: MAYA_SYSTEM_PROMPT },
+        { role: 'system', content: MAYA_SYSTEM_PROMPT + '\n\nCURRENT FLOW STATE: ' + detectFlowState(history) + '\nYou MUST act according to this state. Do not restart the flow. Do not re-ask questions already answered.' },
         ...history,
       ],
     }),
