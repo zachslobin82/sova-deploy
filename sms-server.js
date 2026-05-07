@@ -245,6 +245,56 @@ async function alertSlack(clientPhone, mayaReply, conversationHistory) {
   }
 }
 
+
+// ----------------------------------------------------------------------------
+// DETECT AND WRITE ADD-ONS TO GHL CONTACT FIELD
+// ----------------------------------------------------------------------------
+function detectAddOns(conversationHistory) {
+  const addons = [];
+  const text = conversationHistory.map(m => m.content).join(' ').toLowerCase();
+  // Check if client said yes after each upsell offer
+  const messages = conversationHistory;
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+    if (msg.role === 'assistant') {
+      const isHotStones = msg.content.toLowerCase().includes('hot stones');
+      const isAromatherapy = msg.content.toLowerCase().includes('aromatherapy');
+      const isSauna = msg.content.toLowerCase().includes('infrared sauna');
+      // Check next user message for yes
+      const nextUser = messages[i + 1];
+      if (nextUser && nextUser.role === 'user') {
+        const said = nextUser.content.toLowerCase();
+        const saidYes = said.includes('yes') || said.includes('sure') || said.includes('ok') || said.includes('great') || said.includes('love') || said.includes('add') || said.includes('sounds good') || said.includes('that sounds');
+        if (saidYes && isHotStones) addons.push('Hot Stones +$20');
+        if (saidYes && isAromatherapy) addons.push('Aromatherapy +$15');
+        if (saidYes && isSauna) addons.push('Infrared Sauna 30min +$50');
+      }
+    }
+  }
+  return addons;
+}
+
+async function writeAddOnsToContact(contactId, addons) {
+  if (!contactId || addons.length === 0) return;
+  try {
+    const res = await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${CONFIG.ghlBearerToken}`,
+        'Content-Type': 'application/json',
+        'Version': '2021-07-28'
+      },
+      body: JSON.stringify({
+        customFields: [{ id: '8EOok3x105CyQIIJyMtx', value: addons.join(', ') }]
+      })
+    });
+    const data = await res.json();
+    console.log('[ADD-ONS] Written to contact:', addons.join(', '));
+  } catch (err) {
+    console.error('[ADD-ONS] Failed to write:', err.message);
+  }
+}
+
 async function alertCarolyn(clientPhone, clientMessage) {
   const alertMessage =
     `Maya Alert: Client (${clientPhone}) cancelled via text.\n` +
@@ -312,6 +362,22 @@ app.post('/sms-inbound', async (req, res) => {
     // --- Send reply via GHL ---
     await sendGhlSms(clientPhone, mayaReply);
     console.log(`[SMS SENT] To: ${clientPhone}`);
+
+    // --- Write add-ons to GHL contact field ---
+    const history = conversations.get(clientPhone) || [];
+    const addons = detectAddOns(history);
+    if (addons.length > 0) {
+      // Look up contactId from phone
+      const contactRes = await fetch(
+        `https://services.leadconnectorhq.com/contacts/?locationId=${CONFIG.ghlLocationId}&query=${encodeURIComponent(toPhone)}`,
+        { headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, Version: '2021-04-15' } }
+      );
+      if (contactRes.ok) {
+        const contactData = await contactRes.json();
+        const contactId = contactData?.contacts?.[0]?.id || null;
+        await writeAddOnsToContact(contactId, addons);
+      }
+    }
 
     // --- Fire Slack alert if booking is complete ---
     if (isBookingComplete(mayaReply)) {
