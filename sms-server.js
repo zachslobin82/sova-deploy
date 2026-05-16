@@ -207,14 +207,15 @@ function isCancellation(message) {
 // Uses GHL's conversation API to send an outbound SMS from Maya's number
 // ----------------------------------------------------------------------------
 async function sendGhlSms(toPhone, message) {
-  const digits = toPhone.replace(/\D/g, '');
-  const normalized = digits.startsWith('1') ? '+' + digits : '+1' + digits;
+  const digits = toPhone.replace(/\D/g, "");
+  const normalized = digits.startsWith("1") ? "+" + digits : "+1" + digits;
   let contactId = null;
   try {
-    const r = await fetch('https://services.leadconnectorhq.com/contacts/?locationId=' + CONFIG.ghlLocationId + '&query=' + encodeURIComponent(normalized), { headers: { Authorization: 'Bearer ' + CONFIG.ghlBearerToken, Version: '2021-04-15' } });
+    const r = await fetch("https://services.leadconnectorhq.com/contacts/?locationId=" + CONFIG.ghlLocationId + "&query=" + encodeURIComponent(normalized), { headers: { Authorization: "Bearer " + CONFIG.ghlBearerToken, Version: "2021-04-15" } });
     if (r.ok) { const d = await r.json(); contactId = d?.contacts?.[0]?.id || null; }
-  } catch(e) { console.error('[SMS] lookup:', e.message); }
-  const smsRes = await fetch('https://services.leadconnectorhq.com/conversations/messages', { method: 'POST', headers: { Authorization: 'Bearer ' + CONFIG.ghlBearerToken, 'Content-Type': 'application/json', Version: '2021-04-15' }, body: JSON.stringify({ type: 'SMS', message, contactId, fromNumber: CONFIG.ghlFromNumber, toNumber: normalized, locationId: CONFIG.ghlLocationId }) });
+  } catch(e) { console.error("[SMS] lookup:", e.message); }
+  const smsRes = await fetch("https://services.leadconnectorhq.com/conversations/messages", { method: "POST", headers: { Authorization: "Bearer " + CONFIG.ghlBearerToken, "Content-Type": "application/json", Version: "2021-04-15" }, body: JSON.stringify({ type: "SMS", message, contactId, fromNumber: CONFIG.ghlFromNumber, toNumber: normalized, locationId: CONFIG.ghlLocationId }) });
+  if (!smsRes.ok) { const err = await smsRes.text(); throw new Error("GHL SMS failed: " + smsRes.status + " - " + err); }
   return await smsRes.json();
 }
 
