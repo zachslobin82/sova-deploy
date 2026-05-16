@@ -209,7 +209,7 @@ function isCancellation(message) {
 async function sendGhlSms(toPhone, message) {
   // First, get or create a conversation for this contact
   const contactRes = await fetch(
-    `https://services.leadconnectorhq.com/contacts/search/duplicate?locationId=${CONFIG.ghlLocationId}&phone=${encodeURIComponent(toPhone)}`,
+    `https://services.leadconnectorhq.com/contacts/search/duplicate?locationId=${CONFIG.ghlLocationId}&phone=${encodeURIComponent((toPhone.replace(/\D/g,"").length===10?"+1":"+")+(toPhone.replace(/\D/g,"")))}`,
     {
       headers: {
         Authorization: `Bearer ${CONFIG.ghlBearerToken}`,
