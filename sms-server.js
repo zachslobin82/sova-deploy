@@ -167,15 +167,15 @@ function isFacialInquiry(text) {
 }
 
 async function getMayaReply(text, state) {
-  try {
-    const res = await axios.post('https://api.anthropic.com/v1/messages',
-      { model: 'claude-opus-4-5', max_tokens: 300, system: buildSystemPrompt(state), messages: [{ role: 'user', content: text }] },
-      { headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY || '', 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' } });
-    return res.data?.content?.[0]?.text?.trim() || '';
-  } catch (err) {
-    console.error('[MAYA AI ERROR]', err?.response?.data || err.message);
-    return "I'm running into a small issue. Give us a call at 203-304-1313 and we'll get you taken care of.";
-  }
+try {
+const res = await axios.post('https://api.openai.com/v1/chat/completions',
+{ model: 'gpt-4.1', max_tokens: 300, messages: [{ role: 'system', content: buildSystemPrompt(state) }, { role: 'user', content: text }] },
+{ headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' } });
+return res.data?.choices?.[0]?.message?.content?.trim() || '';
+} catch (err) {
+console.error('[MAYA AI ERROR]', err?.response?.data || err.message);
+return "I'm running into a small issue. Give us a call at 203-304-1313 and we'll get you taken care of.";
+}
 }
 
 // Serve intake form
