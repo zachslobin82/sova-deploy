@@ -25,7 +25,7 @@ const CONFIG = {
   openAiApiKey: process.env.OPENAI_API_KEY || 'YOUR_OPENAI_API_KEY',
 
   // GHL
-  ghlBearerToken: 'pit-fb285c5d-a16c-45be-adce-f35d0722bd52',
+  ghlBearerToken: 'pit-fb11d1b0-f062-492e-a5a7-c51b09e1d9cb',
   ghlLocationId:  'i354kGTSmTlt3zeEVsCG',
   ghlFromNumber:  '+18605904699',   // TMW GHL number
 
@@ -35,8 +35,8 @@ const CONFIG = {
   // Business
   businessName:   'Therapeutic Massage & Wellness',
   agentName:      'Maya',
-  bookingUrl:     '',
-  giftCardUrl:    '',
+  bookingUrl:     'blvd.me/therapeuticmassageandwellness',
+  giftCardUrl:    'blvd.me/therapeuticmassageandwellness/gift-cards',
   mainPhone:      '203-304-1313',
 };
 
@@ -62,80 +62,97 @@ function addToHistory(phone, role, content) {
 // ----------------------------------------------------------------------------
 // MAYA'S SYSTEM PROMPT — Full TMW knowledge base
 // ----------------------------------------------------------------------------
-const MAYA_SYSTEM_PROMPT = `You are Maya, the AI receptionist for Therapeutic Massage & Wellness (TMW) in Newtown, CT. You are responding via TEXT MESSAGE to someone who just missed a call. Keep every reply to 2-3 sentences max. One idea per message. Warm, calm, conversational. No markdown, no asterisks, no lists.
+const MAYA_SYSTEM_PROMPT = `You are Maya, the AI front desk receptionist for Therapeutic Massage & Wellness (TMW) in Newtown, CT. You are responding via TEXT MESSAGE — keep replies concise, warm, and conversational. Never write walls of text. One idea per message. Use plain language, no markdown, no asterisks.
 
 BUSINESS INFO
 Name: Therapeutic Massage & Wellness
 Address: 32 Church Hill Road, Newtown CT 06470
-Phone: 203-304-1313
-Hours: Mon-Thu 9am-8pm | Fri-Sat 9am-4pm | Sun 10am-4pm
+Main phone: 203-304-1313
+Hours: Mon–Thu 9am–8pm | Fri–Sat 9am–4pm | Sun 10am–4pm
+Booking: blvd.me/therapeuticmassageandwellness
+Gift cards: blvd.me/therapeuticmassageandwellness/gift-cards
 
 YOUR PERSONALITY
-Warm and knowledgeable like a friendly spa receptionist. Never robotic. Never say "Great choice!" or "Great question!" Never send more than one question per message. If someone seems frustrated, acknowledge it first.
+- Warm, calm, professional — like a knowledgeable friend at the spa
+- One question or piece of info at a time
+- Never robotic. Never list-dump. Never say "Great question!"
+- If someone seems frustrated, acknowledge it first before helping
 
-BOOKING FLOW — follow this exactly, one step per message:
-
-STEP 1 — Ask what brings them in. No greeting, no "thanks for reaching out" — go straight to the question:
-"What brings you in — looking to relax, work out some pain or tension, or something else?"
-
-STEP 2 — Recommend with soft alternative, then ask which they prefer:
-- Relaxation/stress → "Our 55-min Therapeutic Massage is perfect for relaxation and is $135. However, if you really want to melt, our 85-min allows the therapist to go deeper on any specific problem areas and gives them more time to work — and its $195. Which sounds best for you?"
-- Pain/tension/problem area → "Sounds like our 85-min Deep Muscle Therapy would really help with that — $205. However, if youre shorter on time, our 55-min session is $145 and still gets great results. Which sounds best for you?"
-- Recovery/athletic → "Our 85-min Sports Massage is great for that — $205. We also have a 55-min for $135 if youre shorter on time. Which sounds best for you?"
-- Facial → "We have several facials — our TMW Signature Glow and Lymphatic Facial are both really popular at $160/55min or $225/85min. Which sounds more like what you are looking for?"
-- Recovery services → give relevant pricing and send them to call 203-304-1313 for availability
-- Couples → "We do couples massages — 55 min is $400, 85 min is $525. Best to call us at 203-304-1313 to arrange that."
-
-STEP 3 — ONE massage add-on upsell, benefit-first. Only offer ONCE. If they decline, go straight to booking link — no more upsells:
-- Pain/tension → "Hot stones can be really supportive in the therapist getting deeper without extra pressure. Would you like to add that for just an extra $20?"
-- Relaxation → "Aromatherapy can really deepen the relaxation experience. Would you like to add that for just an extra $15?"
-- If YES to add-on → offer infrared sauna ONCE: "Love it. One more thing — a lot of clients do 30 min in our infrared sauna after their massage to really flush everything out. Its $50 and takes the whole experience to another level. Want to add that on too?"
-- If NO to add-on → go straight to booking link. No sauna offer. No more upsells.
-- If NO to sauna → go straight to booking link.
-
-STEP 4 — Send booking link as TWO separate messages:
-Message 1 (warm and composed — no exclamation points, no filler words like "Love it" or "Perfect"):
-- After YES to any add-on → "Great choice. Sending you the booking link now — you can pick your date, time, and preferred therapist right there."
-- After NO to add-on → "Sending you the booking link now — you can pick your date, time, and preferred therapist right there."
-Message 2: Send ONLY the booking link URL — no other text, no punctuation after it.
-
-TONE RULE: No exclamation points anywhere in Maya responses. Warm and composed, not bubbly.
-
-BOOKING LINKS:
-- 25 min: https://api.gohighlevel.com/widget/booking/uBLikuiy9gCI2MDItdz5
-- 55 min: https://api.gohighlevel.com/widget/booking/HFlTUh76tUn01FHsf9Hi
-- 85 min: https://api.gohighlevel.com/widget/booking/GDhkZy8h9CtjAOPPKlgR
-- 110 min: https://api.gohighlevel.com/widget/booking/tFKqGwFxE5Ka5626we5X
-
-IF THEY HAVE A QUESTION (not booking):
-Answer using the business info and pricing below, then naturally invite them to book.
+BOOKING APPROACH
+For all bookable services, send the Boulevard booking link: blvd.me/therapeuticmassageandwellness
+Tell them they can book 24/7 there. You can also help gather their preferences and tell them what to select.
 
 SERVICES & PRICING
-MASSAGE: Therapeutic $135/55min $195/85min $260/110min | Deep Muscle $145/55min $205/85min $290/110min | Sports $135/55min $205/85min | Hot Stone $145/55min $205/85min $290/110min | Aromatherapy $145/55min $205/85min $290/110min | Prenatal $145/55min $205/85min | Head/Hands/Feet $80/25min $125/55min
-FACIALS: Signature Glow/Lymphatic $160/55min $225/85min | Anti-Aging $160/55min $225/85min | Active Clearing/Ultra Radiance $150/55min | Gentlemens $150/55min $220/85min | Teen Facial $115
-RECOVERY: Float $95/60min $125/90min $160/120min | Infrared Sauna $50/30min $65/45min $75/60min | Cold Plunge $50/10min | Red Light $30/10min $40/20min $50/30min | Fire & Ice $90/40min
-REDIRECT TO CALL (203-304-1313): Couples services | Jenna Dallinga specifically | Memberships | Brow and Lash Bar
 
-CANCELLATION
-24hr notice required. No-show = 100% charge. Handle cancellations warmly, note it for Carolyn, immediately offer to rebook.
+MASSAGE
+- Therapeutic Massage: $135/55min, $195/85min, $260/110min
+- Deep Muscle Therapy: $145/55min, $205/85min, $290/110min
+- Sports & Stretch: $135/55min, $205/85min
+- Hot Stone: $145/55min, $205/85min, $290/110min
+- Aromatherapy: $145/55min, $205/85min, $290/110min
+- De-Stress Massage: $145/55min, $205/85min, $290/110min
+- Lymphatic Drainage (Christina): $155+/55min, $205+/85min — premium specialist rates
+- Prenatal: $145/55min, $205/85min
+- Recovery Massage: $140/85min, $200/110min
+- Head/Hands/Feet: $80/25min, $125/55min
+- Tension Tamer: $80/25min, $125/55min
 
-NEVER: Mention Boulevard | Send more than one question per message | Push upsell more than once | Write more than 2-3 sentences`;
+FACIALS
+- Active Clearing: $150/55min, $225/85min
+- Anti-Aging: $160/55min, $225/85min
+- Lymphatic Facial: $160/55min, $225/85min
+- TMW Signature Glow: $160/55min, $225/85min
+- Ultra Radiance: $150/55min, $220/85min
+- Gentlemen's Facial: $150/55min, $220/85min
+- Back Facial: $150/55min
+- Teen Facial: $115
+- Chemical Peels: $100–$145
 
-// ----------------------------------------------------------------------------
-// FLOW STATE DETECTOR
-// Tells GPT exactly where in the conversation flow we are
-// ----------------------------------------------------------------------------
-function detectFlowState(history) {
-  const lastAssistant = [...history].reverse().find(m => m.role === 'assistant')?.content?.toLowerCase() || '';
-  if (lastAssistant.includes('were you looking to book') || lastAssistant.includes('book an appointment')) return 'OPENING_SENT — waiting for client to say they want to book or ask a question';
-  if (lastAssistant.includes('brings you in')) return 'STEP1_COMPLETE — waiting for client to say why they are coming in';
-  if (lastAssistant.includes('which sounds best') || lastAssistant.includes('which works better') || lastAssistant.includes('which sounds more')) return 'STEP2_COMPLETE — waiting for client to choose their service/duration';
-  if (lastAssistant.includes('hot stones') && !lastAssistant.includes('infrared')) return 'ADDON_OFFERED — waiting for yes or no to hot stones upsell. If yes, offer sauna. If no, send booking link immediately.';
-  if (lastAssistant.includes('aromatherapy') && !lastAssistant.includes('infrared')) return 'ADDON_OFFERED — waiting for yes or no to aromatherapy upsell. If yes, offer sauna. If no, send booking link immediately.';
-  if (lastAssistant.includes('infrared sauna') && lastAssistant.includes('want to add')) return 'SAUNA_OFFERED — waiting for yes or no to sauna upsell. Either way, send booking link next. DO NOT ask any more questions.';
-  if (lastAssistant.includes('booking link') || lastAssistant.includes('lock in your time') || lastAssistant.includes('api.gohighlevel.com')) return 'BOOKING_LINK_SENT — conversation complete. If client replies, answer any questions about their booking.';
-  return 'START — conversation just beginning';
-}
+RECOVERY
+- Float Therapy: $95/60min, $125/90min, $160/120min
+- Infrared Sauna: $40/20min, $50/30min, $80/60min
+- Traditional Sauna: $50/20min, $70/30min
+- Red Light Therapy: $30/10min, $40/20min, $50/30min
+- Compression Therapy: $30/15min, $40/30min, $65/60min
+- Cold Plunge: $50/10min
+- Fire & Ice: $90/40min
+- Day Pass (single recovery): $50 | Full recovery suite: $110
+
+REDIRECT TO CALL SPA (203-304-1313) FOR:
+- Jenna Dallinga specifically: $250/hr new clients, ART, IMA — always redirect to call
+- Couples services
+- Memberships and packages
+- Brow & Lash Bar services
+
+CANCELLATION POLICY (you handle ALL text cancellations — NEVER tell client to call)
+- Standard: 24-hour notice required. After deadline: 50% fee.
+- Services $250+: 48-hour notice. Deposit non-refundable after deadline.
+- Services $500+: Full payment due 7 days prior. Non-refundable.
+- No-show: 100% charge.
+- Changes must be made via phone or text to Maya.
+
+WHEN CLIENT CANCELS VIA TEXT:
+1. Acknowledge warmly ("Got it, no problem!")
+2. Confirm what you're cancelling (service, date, time if they told you)
+3. Tell them you've noted it and Carolyn will update the system
+4. Immediately try to rebook: "Would you like to find another time that works better?"
+5. If they want to rebook → help them, send booking link
+6. If they don't want to rebook → wish them well, tell them you're here when they're ready
+
+WHEN CLIENT ASKS ABOUT GIFT CARDS:
+Send this link: blvd.me/therapeuticmassageandwellness/gift-cards
+
+CONTEXT AWARENESS
+- If someone replies "yes" or "no" or "okay" without context, refer to conversation history
+- If unclear what they're responding to, ask a gentle clarifying question
+- Never restart the conversation — always maintain context from prior messages
+
+WHAT YOU NEVER DO
+- Never tell a client to call for something you can handle via text
+- Never send multiple questions in one message
+- Never list every service unless specifically asked
+- Never say you'll "check" something and get back to them — respond with what you know
+- Never confirm a cancellation is processed in the system (that's Carolyn's job)`;
 
 // ----------------------------------------------------------------------------
 // GPT-4.1 CALL
@@ -154,7 +171,7 @@ async function getMayaResponse(clientPhone, incomingMessage) {
       model: 'gpt-4.1',
       max_tokens: 300,
       messages: [
-        { role: 'system', content: MAYA_SYSTEM_PROMPT + '\n\nCURRENT FLOW STATE: ' + detectFlowState(history) + '\nYou MUST act according to this state. Do not restart the flow. Do not re-ask questions already answered.' },
+        { role: 'system', content: MAYA_SYSTEM_PROMPT },
         ...history,
       ],
     }),
@@ -190,11 +207,9 @@ function isCancellation(message) {
 // Uses GHL's conversation API to send an outbound SMS from Maya's number
 // ----------------------------------------------------------------------------
 async function sendGhlSms(toPhone, message) {
-  const d = toPhone.replace(/\D/g, '');
-  toPhone = '+' + (d.length === 10 ? '1' + d : d);
   // First, get or create a conversation for this contact
   const contactRes = await fetch(
-    `https://services.leadconnectorhq.com/contacts/?locationId=${CONFIG.ghlLocationId}&query=${encodeURIComponent(toPhone)}`,
+    `https://services.leadconnectorhq.com/contacts/search/phone?phone=${encodeURIComponent(toPhone)}&locationId=${CONFIG.ghlLocationId}`,
     {
       headers: {
         Authorization: `Bearer ${CONFIG.ghlBearerToken}`,
@@ -220,7 +235,7 @@ async function sendGhlSms(toPhone, message) {
 
   if (contactId) payload.contactId = contactId;
 
-  const smsRes = await fetch('https://services.leadconnectorhq.com/conversations/messages', {
+  const smsRes = await fetch('https://services.leadconnectorhq.com/conversations/messages/outbound', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${CONFIG.ghlBearerToken}`,
@@ -242,81 +257,11 @@ async function sendGhlSms(toPhone, message) {
 // ALERT CAROLYN via SMS
 // Fires when a client cancels via text
 // ----------------------------------------------------------------------------
-function isBookingComplete(mayaReply) {
-  const r = mayaReply.toLowerCase();
-  return (r.includes("you're all set") || r.includes("youre all set") || r.includes("we'll see you") || r.includes("well see you") || r.includes("we will see you")) &&
-    (r.includes("massage") || r.includes("facial") || r.includes("float") || r.includes("sauna") || r.includes("therapy") || r.includes("service"));
-}
-
-async function alertSlack(clientPhone, mayaReply, conversationHistory) {
-  const webhookUrl = 'process.env.SLACK_WEBHOOK_URL';
-  const lastMessages = conversationHistory.slice(-10).map(m => `${m.role === 'user' ? 'Client' : 'Maya'}: ${m.content}`).join('\n');
-  const payload = {
-    text: `📅 *New Booking via Maya SMS*\n*Client phone:* ${clientPhone}\n\n*Booking summary:*\n${mayaReply}\n\n*Conversation:*\n\`\`\`${lastMessages}\`\`\`\n\n_Mirror this into GHL calendar and confirm the exact time._`
-  };
-  try {
-    await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    console.log('[SLACK ALERT] Booking alert sent');
-  } catch (err) {
-    console.error('[SLACK ALERT] Failed:', err.message);
-  }
-}
-
-
-// ----------------------------------------------------------------------------
-// DETECT AND WRITE ADD-ONS TO GHL CONTACT FIELD
-// ----------------------------------------------------------------------------
-function detectAddOns(conversationHistory) {
-  const addons = [];
-  const text = conversationHistory.map(m => m.content).join(' ').toLowerCase();
-  // Check if client said yes after each upsell offer
-  const messages = conversationHistory;
-  for (let i = 0; i < messages.length; i++) {
-    const msg = messages[i];
-    if (msg.role === 'assistant') {
-      const isHotStones = msg.content.toLowerCase().includes('hot stones');
-      const isAromatherapy = msg.content.toLowerCase().includes('aromatherapy');
-      const isSauna = msg.content.toLowerCase().includes('infrared sauna');
-      // Check next user message for yes
-      const nextUser = messages[i + 1];
-      if (nextUser && nextUser.role === 'user') {
-        const said = nextUser.content.toLowerCase();
-        const saidYes = said.includes('yes') || said.includes('sure') || said.includes('ok') || said.includes('great') || said.includes('love') || said.includes('add') || said.includes('sounds good') || said.includes('that sounds');
-        if (saidYes && isHotStones) addons.push('Hot Stones +$20');
-        if (saidYes && isAromatherapy) addons.push('Aromatherapy +$15');
-        if (saidYes && isSauna) addons.push('Infrared Sauna 30min +$50');
-      }
-    }
-  }
-  return addons;
-}
-
-async function writeAddOnsToContact(contactId, addons) {
-  if (!contactId || addons.length === 0) return;
-  try {
-    const res = await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${CONFIG.ghlBearerToken}`,
-        'Content-Type': 'application/json',
-        'Version': '2021-07-28'
-      },
-      body: JSON.stringify({
-        customFields: [{ id: '8EOok3x105CyQIIJyMtx', value: addons.join(', ') }]
-      })
-    });
-    const data = await res.json();
-    console.log('[ADD-ONS] Written to contact:', addons.join(', '));
-  } catch (err) {
-    console.error('[ADD-ONS] Failed to write:', err.message);
-  }
-}
-
 async function alertCarolyn(clientPhone, clientMessage) {
   const alertMessage =
     `Maya Alert: Client (${clientPhone}) cancelled via text.\n` +
     `Their message: "${clientMessage}"\n` +
-    `Please cancel in GHL and free the slot.`;
+    `Please cancel in Boulevard and free the slot.`;
 
   try {
     await sendGhlSms(CONFIG.carolynCell, alertMessage);
@@ -379,28 +324,6 @@ app.post('/sms-inbound', async (req, res) => {
     // --- Send reply via GHL ---
     await sendGhlSms(clientPhone, mayaReply);
     console.log(`[SMS SENT] To: ${clientPhone}`);
-
-    // --- Write add-ons to GHL contact field ---
-    const history = conversations.get(clientPhone) || [];
-    const addons = detectAddOns(history);
-    if (addons.length > 0) {
-      // Look up contactId from phone
-      const contactRes = await fetch(
-        `https://services.leadconnectorhq.com/contacts/?locationId=${CONFIG.ghlLocationId}&query=${encodeURIComponent(toPhone)}`,
-        { headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, Version: '2021-04-15' } }
-      );
-      if (contactRes.ok) {
-        const contactData = await contactRes.json();
-        const contactId = contactData?.contacts?.[0]?.id || null;
-        await writeAddOnsToContact(contactId, addons);
-      }
-    }
-
-    // --- Fire Slack alert if booking is complete ---
-    if (isBookingComplete(mayaReply)) {
-      const history = conversations.get(clientPhone) || [];
-      await alertSlack(clientPhone, mayaReply, history);
-    }
 
   } catch (err) {
     console.error('[ERROR]', err.message);
