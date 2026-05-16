@@ -207,56 +207,17 @@ function isCancellation(message) {
 // Uses GHL's conversation API to send an outbound SMS from Maya's number
 // ----------------------------------------------------------------------------
 async function sendGhlSms(toPhone, message) {
-  // First, get or create a conversation for this contact
-  const contactRes = await fetch(
-    `https://services.leadconnectorhq.com/contacts/search/phone?phone=${encodeURIComponent(toPhone)}&locationId=${CONFIG.ghlLocationId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${CONFIG.ghlBearerToken}`,
-        Version: '2021-04-15',
-      },
-    }
-  );
-
+  const digits = toPhone.replace(/\D/g, '');
+  const normalized = digits.startsWith('1') ? '+' + digits : '+1' + digits;
   let contactId = null;
-  if (contactRes.ok) {
-    const contactData = await contactRes.json();
-    contactId = contactData?.contacts?.[0]?.id || null;
-  }
-
-  // Send SMS via GHL conversations endpoint
-  const payload = {
-    type: 'SMS',
-    message,
-    fromNumber: CONFIG.ghlFromNumber,
-    toNumber: toPhone,
-    locationId: CONFIG.ghlLocationId,
-  };
-
-  if (contactId) payload.contactId = contactId;
-
-  const smsRes = await fetch('https://services.leadconnectorhq.com/conversations/messages/outbound', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${CONFIG.ghlBearerToken}`,
-      'Content-Type': 'application/json',
-      Version: '2021-04-15',
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!smsRes.ok) {
-    const errText = await smsRes.text();
-    throw new Error(`GHL SMS send failed: ${smsRes.status} — ${errText}`);
-  }
-
+  try {
+    const r = await fetch('https://services.leadconnectorhq.com/contacts/?locationId=' + CONFIG.ghlLocationId + '&query=' + encodeURIComponent(normalized), { headers: { Authorization: 'Bearer ' + CONFIG.ghlBearerToken, Version: '2021-04-15' } });
+    if (r.ok) { const d = await r.json(); contactId = d?.contacts?.[0]?.id || null; }
+  } catch(e) { console.error('[SMS] lookup:', e.message); }
+  const smsRes = await fetch('https://services.leadconnectorhq.com/conversations/messages', { method: 'POST', headers: { Authorization: 'Bearer ' + CONFIG.ghlBearerToken, 'Content-Type': 'application/json', Version: '2021-04-15' }, body: JSON.stringify({ type: 'SMS', message, contactId, fromNumber: CONFIG.ghlFromNumber, toNumber: normalized, locationId: CONFIG.ghlLocationId }) });
   return await smsRes.json();
 }
 
-// ----------------------------------------------------------------------------
-// ALERT CAROLYN via SMS
-// Fires when a client cancels via text
-// ----------------------------------------------------------------------------
 async function alertCarolyn(clientPhone, clientMessage) {
   const alertMessage =
     `Maya Alert: Client (${clientPhone}) cancelled via text.\n` +
