@@ -333,6 +333,51 @@ app.post('/sms-inbound', async (req, res) => {
 // ----------------------------------------------------------------------------
 // HEALTH CHECK
 // ----------------------------------------------------------------------------
+
+// POST /create-ghl-booking  (Retell voice agent)
+app.post('/create-ghl-booking', async (req, res) => {
+  console.log('[BOOKING REQUEST]', JSON.stringify(req.body));
+  const { calendarId, locationId, startTime, endTime, firstName, lastName, email, phone, title } = req.body;
+  const missing = [];
+  if (!calendarId) missing.push('calendarId');
+  if (!startTime) missing.push('startTime');
+  if (!endTime) missing.push('endTime');
+  if (missing.length) return res.status(400).json({ success: false, error: 'Missing: ' + missing.join(', ') });
+  const loc = locationId || GHL_LOCATION;
+  let contactId = null;
+  try {
+    if (phone) {
+      const sr = await axios.get('https://services.leadconnectorhq.com/contacts/search/duplicate?locationId=' + loc + '&phone=' + encodeURIComponent(phone.replace(/\D/g,'').length === 10 ? '+1' + phone.replace(/\D/g,'') : '+' + phone.replace(/\D/g,'')), { headers: ghlHeaders() });
+      contactId = sr.data?.contact?.id || null;
+    }
+    if (!contactId) {
+      const cr = await axios.post('https://services.leadconnectorhq.com/contacts/', { locationId: loc, firstName: firstName||'', lastName: lastName||'', email: email||'', phone: phone||'' }, { headers: { Authorization: `Bearer ${GHL_BEARER}`, 'Content-Type': 'application/json', Version: '2021-07-28' } });
+      contactId = cr.data?.contact?.id || null;
+    }
+  } catch(e) { console.error('[BOOKING] contact error', e.message); }
+  try {
+    const ar = await axios.post('https://services.leadconnectorhq.com/calendars/events/appointments', { calendarId, locationId: loc, contactId, startTime, endTime, title: title || (firstName + ' ' + lastName + ' - Massage'), appointmentStatus: 'confirmed', toNotify: true }, { headers: ghlHeaders() });
+    const appointmentId = ar.data?.id || ar.data?.appointment?.id || 'unknown';
+    console.log('[BOOKING SUCCESS]', appointmentId);
+    if (phone) {
+      try {
+        let timeStr = '';
+        try { timeStr = new Date(startTime).toLocaleString('en-US', { weekday: 'short', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }); } catch(_) { timeStr = startTime; }
+        const intakeUrl = 'https://sova-deploy-production.up.railway.app/intake' + (contactId ? '?contactId=' + contactId + '&firstName=' + encodeURIComponent(firstName||'') + '&phone=' + encodeURIComponent(phone) : '');
+        await sendSMS(phone, firstName + ", you're all set on " + timeStr + ". Before you come in, please fill out your intake form — it helps your therapist prepare: " + intakeUrl);
+        await new Promise(r => setTimeout(r, 1500));
+        await sendSMS(phone, "A quick note on our cancellation policy: 24 hours notice is required for any cancellations or changes. Less than 24 hours incurs a 50% charge. 6 hours or less incurs a 100% charge. Couples and parties of 2-4 require 48 hours notice. To cancel or reschedule, call 203-304-1313. We look forward to seeing you.");
+        await slackAlert("[Maya] Voice booking\n" + firstName + " " + lastName + " (" + phone + ")\n" + timeStr + "\nAppt ID: " + appointmentId);
+      } catch(smsErr) { console.error('[BOOKING] SMS error', smsErr.message); }
+    }
+    return res.status(200).json({ success: true, appointmentId, message: 'Confirmed for ' + firstName + ' ' + lastName });
+  } catch(err) {
+    console.error('[BOOKING ERROR]', err?.response?.data || err.message);
+    await slackAlert("[Maya] Voice booking FAILED\n" + firstName + " " + lastName + " (" + phone + ")\nError: " + err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
