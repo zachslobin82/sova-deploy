@@ -25,7 +25,7 @@ const CONFIG = {
   openAiApiKey: process.env.OPENAI_API_KEY || 'YOUR_OPENAI_API_KEY',
 
   // GHL
-  ghlBearerToken: 'pit-fb11d1b0-f062-492e-a5a7-c51b09e1d9cb',
+  ghlBearerToken: process.env.GHL_BEARER_TOKEN,
   ghlLocationId:  'i354kGTSmTlt3zeEVsCG',
   ghlFromNumber:  '+18605904699',   // TMW GHL number
 
@@ -235,7 +235,7 @@ async function sendGhlSms(toPhone, message) {
 
   if (contactId) payload.contactId = contactId;
 
-  const smsRes = await fetch('https://services.leadconnectorhq.com/conversations/messages/outbound', {
+  const smsRes = await fetch('https://services.leadconnectorhq.com/conversations/messages', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${CONFIG.ghlBearerToken}`,
