@@ -37,7 +37,7 @@ function ghlHeaders() {
   return { Authorization: `Bearer ${GHL_BEARER}`, 'Content-Type': 'application/json', Version: '2021-04-15' };
 }
 
-async function sendSMS(toPhone, message) {
+async function sendSMS(toPhone, message, contactId = null) {
   try {
     const res = await axios.post('https://services.leadconnectorhq.com/conversations/messages',
       { type: 'SMS', message, contactPhone: toPhone, fromNumber: FROM_NUMBER, locationId: GHL_LOCATION },
