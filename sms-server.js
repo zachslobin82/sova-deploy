@@ -174,6 +174,23 @@ function isCancellation(message) {
 }
 
 // ----------------------------------------------------------------------------
+// SLACK ALERT
+// ----------------------------------------------------------------------------
+async function alertSlack(message) {
+  const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+  if (!webhookUrl) return;
+  try {
+    await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: message }),
+    });
+  } catch (err) {
+    console.error('[SLACK ALERT] Failed:', err.message);
+  }
+}
+
+// ----------------------------------------------------------------------------
 // GHL: SEND SMS
 // ----------------------------------------------------------------------------
 async function sendGhlSms(toPhone, message) {
@@ -319,6 +336,7 @@ app.post('/sms/inbound', async (req, res) => {
     if (isCancellation(incomingMessage)) {
       console.log('[CANCELLATION DETECTED] Alerting Carolyn...');
       await alertCarolyn(clientPhone, incomingMessage);
+      await alertSlack(`[Maya] :warning: Cancellation\nFrom: ${clientPhone}\nMsg: "${incomingMessage}"`);
     }
 
     const mayaReply = await getMayaResponse(clientPhone, incomingMessage);
@@ -339,6 +357,11 @@ app.post('/sms/inbound', async (req, res) => {
         const contactId = contactData?.contacts?.[0]?.id || null;
         await writeAddOnsToContact(contactId, addons);
       }
+    }
+
+    // Slack alert if booking link was just sent
+    if (mayaReply && (mayaReply.includes('api.gohighlevel.com') || mayaReply.toLowerCase().includes('booking link'))) {
+      await alertSlack(`[Maya] :calendar: Booking link sent\nPhone: ${clientPhone}\nAdd-ons: ${addons.join(', ') || 'none'}`);
     }
 
   } catch (err) {
