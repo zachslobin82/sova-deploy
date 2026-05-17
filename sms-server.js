@@ -257,7 +257,7 @@ app.post('/sms/inbound', async (req, res) => {
   const _rs = flowState[contactId || clientPhone];
   if (_rs?.stage === 'rebook') {
     if (isRebookAcceptance(incomingText)) {
-      await await sendSMS(clientPhone, "Here is the link to grab a new time that works for you.", null, conversationId);
+     await sendSMS(clientPhone, "Here is the link to grab a new time that works for you.", null, conversationId);
       await new Promise(r => setTimeout(r, 800));
      await sendSMS(clientPhone, BOOKING_LINKS[55], null, conversationId);
       _rs.stage = 'done';
