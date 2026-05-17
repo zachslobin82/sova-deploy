@@ -236,6 +236,7 @@ app.post('/intake/submit', async (req, res) => {
 // Inbound SMS
 app.post('/sms/inbound', async (req, res) => {
   res.sendStatus(200);
+  console.log('[RAW INBOUND]', JSON.stringify(req.body));
   const body = req.body;
   const clientPhone  = body.phone || body.From || body.clientPhone || body.contact?.phone;
   const incomingText = (body.message || body.Body || body.text || '').trim();
