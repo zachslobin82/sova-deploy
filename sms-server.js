@@ -74,17 +74,25 @@ STEP 2 — Recommend with soft alternative, then ask which they prefer:
 - Recovery services → give relevant pricing and send them to call 203-304-1313 for availability
 - Couples → "We do couples massages — 55 min is $400, 85 min is $525. Best to call us at 203-304-1313 to arrange that."
 
-STEP 3 — ONE massage add-on upsell, benefit-first. Only offer ONCE. If they decline, go straight to booking link — no more upsells:
+STEP 3 — Ask about therapist preference. One message, one question:
+"Do you have a preferred therapist, or is anyone available fine?"
+- If NO preference → move to Step 4 (add-on upsell).
+- If YES preference → send TWO messages:
+  Message 1: "I'll have someone from the team follow up to get you booked with them. In the meantime, here's a link to grab any available time now."
+  Message 2: Send ONLY the booking link URL.
+  Then flag for team follow-up in your reply by including the text THERAPIST_REQUESTED so the system can alert the team. Do not say this to the client.
+
+STEP 4 — ONE massage add-on upsell, benefit-first. Only offer ONCE. If they decline, go straight to booking link — no more upsells:
 - Pain/tension → "Hot stones can be really supportive in the therapist getting deeper without extra pressure. Would you like to add that for just an extra $20?"
 - Relaxation → "Aromatherapy can really deepen the relaxation experience. Would you like to add that for just an extra $15?"
-- If YES to add-on → offer infrared sauna ONCE: "Love it. One more thing — a lot of clients do 30 min in our infrared sauna after their massage to really flush everything out. Its $50 and takes the whole experience to another level. Want to add that on too?"
+- If YES to add-on → offer infrared sauna ONCE: "One more thing — a lot of clients do 30 min in our infrared sauna after their massage to really flush everything out. Its $50 and takes the whole experience to another level. Want to add that on too?"
 - If NO to add-on → go straight to booking link. No sauna offer. No more upsells.
 - If NO to sauna → go straight to booking link.
 
-STEP 4 — Send booking link as TWO separate messages:
-Message 1 (warm and composed — no exclamation points, no filler words like "Love it" or "Perfect"):
-- After YES to any add-on → "Great choice. Sending you the booking link now — you can pick your date, time, and preferred therapist right there."
-- After NO to add-on → "Sending you the booking link now — you can pick your date, time, and preferred therapist right there."
+STEP 5 — Send booking link as TWO separate messages:
+Message 1 (warm and composed — no exclamation points, no filler):
+- After YES to any add-on → "Great choice. Sending you the booking link now — you can pick your date and time right there."
+- After NO to add-on → "Sending you the booking link now — you can pick your date and time right there."
 Message 2: Send ONLY the booking link URL — no other text, no punctuation after it.
 
 TONE RULE: No exclamation points anywhere in Maya responses. Warm and composed, not bubbly.
@@ -116,6 +124,7 @@ function detectFlowState(history) {
   const lastAssistant = [...history].reverse().find(m => m.role === 'assistant')?.content?.toLowerCase() || '';
   if (lastAssistant.includes('brings you in')) return 'STEP1_COMPLETE — waiting for client to say why they are coming in';
   if (lastAssistant.includes('which sounds best') || lastAssistant.includes('which works better') || lastAssistant.includes('which sounds more')) return 'STEP2_COMPLETE — waiting for client to choose their service/duration';
+  if (lastAssistant.includes('preferred therapist') || lastAssistant.includes('anyone available fine')) return 'STEP3_COMPLETE — waiting for therapist preference. If no preference, move to add-on upsell. If yes preference, send booking link and include THERAPIST_REQUESTED in reply.';
   if (lastAssistant.includes('hot stones') && !lastAssistant.includes('infrared')) return 'ADDON_OFFERED — waiting for yes or no to hot stones upsell. If yes, offer sauna. If no, send booking link immediately.';
   if (lastAssistant.includes('aromatherapy') && !lastAssistant.includes('infrared')) return 'ADDON_OFFERED — waiting for yes or no to aromatherapy upsell. If yes, offer sauna. If no, send booking link immediately.';
   if (lastAssistant.includes('infrared sauna') && lastAssistant.includes('want to add')) return 'SAUNA_OFFERED — waiting for yes or no to sauna upsell. Either way, send booking link next. DO NOT ask any more questions.';
@@ -362,6 +371,11 @@ app.post('/sms/inbound', async (req, res) => {
     // Slack alert if booking link was just sent
     if (mayaReply && (mayaReply.includes('api.gohighlevel.com') || mayaReply.toLowerCase().includes('booking link'))) {
       await alertSlack(`[Maya] :calendar: Booking link sent\nPhone: ${clientPhone}\nAdd-ons: ${addons.join(', ') || 'none'}`);
+    }
+
+    // Slack alert if client requested a specific therapist
+    if (mayaReply && mayaReply.includes('THERAPIST_REQUESTED')) {
+      await alertSlack(`[Maya] :bust_in_silhouette: Therapist preference requested\nPhone: ${clientPhone}\nAction needed: call or text client to confirm therapist and booking.`);
     }
 
   } catch (err) {
