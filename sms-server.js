@@ -1,6 +1,6 @@
 // ============================================================
 // MAYA SMS SERVER — TMW (Therapeutic Massage & Wellness)
-// Sova Deploy | Railway: brave-charisma 
+// Sova Deploy | Railway: brave-charisma
 // ============================================================
 
 const express = require('express');
@@ -41,10 +41,10 @@ async function sendSMS(toPhone, message, contactId = null, conversationId = null
   try {
     const url = conversationId
       ? `https://services.leadconnectorhq.com/conversations/${conversationId}/messages`
-      : 'https://services.leadconnectorhq.com/conversations/messages';
+      : 'https://services.leadconnectorhq.com/conversations/messages/outbound';
     const payload = conversationId
       ? { type: 'SMS', message }
-      : { type: 'SMS', message, contactPhone: toPhone, fromNumber: FROM_NUMBER, locationId: GHL_LOCATION };
+      : { type: 'SMS', message, contactId: contactId, fromNumber: FROM_NUMBER };
     const res = await axios.post(url, payload, { headers: ghlHeaders() });
     console.log(`[SMS SENT] to=${toPhone} status=${res.status}`);
     return res.data;
@@ -171,15 +171,15 @@ function isFacialInquiry(text) {
 }
 
 async function getMayaReply(text, state) {
-try {
-const res = await axios.post('https://api.openai.com/v1/chat/completions',
-{ model: 'gpt-4.1', max_tokens: 300, messages: [{ role: 'system', content: buildSystemPrompt(state) }, { role: 'user', content: text }] },
-{ headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' } });
-return res.data?.choices?.[0]?.message?.content?.trim() || '';
-} catch (err) {
-console.error('[MAYA AI ERROR]', err?.response?.data || err.message);
-return "I'm running into a small issue. Give us a call at 203-304-1313 and we'll get you taken care of.";
-}
+  try {
+    const res = await axios.post('https://api.openai.com/v1/chat/completions',
+      { model: 'gpt-4.1', max_tokens: 300, messages: [{ role: 'system', content: buildSystemPrompt(state) }, { role: 'user', content: text }] },
+      { headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' } });
+    return res.data?.choices?.[0]?.message?.content?.trim() || '';
+  } catch (err) {
+    console.error('[MAYA AI ERROR]', err?.response?.data || err.message);
+    return "I'm running into a small issue. Give us a call at 203-304-1313 and we'll get you taken care of.";
+  }
 }
 
 // Serve intake form
@@ -244,11 +244,12 @@ app.post('/sms/inbound', async (req, res) => {
   if (!contactId) { const c = await getContactByPhone(clientPhone); contactId = c?.id || null; }
   const key = contactId || clientPhone;
   const conversationId = body.conversationId || null;
+
   if (isCancellation(incomingText)) {
     await carolynAlert(`[Maya] Cancellation from ${clientPhone}: "${incomingText}"`);
     await slackAlert(`[Maya] :warning: Cancellation\nFrom: ${clientPhone}\nMsg: "${incomingText}"`);
     if (contactId) { try { await axios.post(`https://services.leadconnectorhq.com/contacts/${contactId}/tags`, { tags: ['Cancelled - Needs Rebook'] }, { headers: ghlHeaders() }); } catch (_) {} }
-    await sendSMS(clientPhone, "Got it — I've let the team know. Before you go, can I help you find another time that works? A lot of clients find it easier to rebook now so you don't lose your spot.", null, conversationId);
+    await sendSMS(clientPhone, "Got it — I've let the team know. Before you go, can I help you find another time that works? A lot of clients find it easier to rebook now so you don't lose your spot.", contactId, conversationId);
     flowState[contactId || clientPhone] = { stage: 'rebook', service: null, addOnChosen: null, saunaOffered: false, context: 'cancelled' };
     return;
   }
@@ -257,13 +258,13 @@ app.post('/sms/inbound', async (req, res) => {
   const _rs = flowState[contactId || clientPhone];
   if (_rs?.stage === 'rebook') {
     if (isRebookAcceptance(incomingText)) {
-     await sendSMS(clientPhone, "Here is the link to grab a new time that works for you.", null, conversationId);
+      await sendSMS(clientPhone, "Here is the link to grab a new time that works for you.", contactId, conversationId);
       await new Promise(r => setTimeout(r, 800));
-     await sendSMS(clientPhone, BOOKING_LINKS[55], null, conversationId);
+      await sendSMS(clientPhone, BOOKING_LINKS[55], contactId, conversationId);
       _rs.stage = 'done';
       await slackAlert(`[Maya] :recycle: Cancel → rebook ${clientPhone}`);
     } else {
-      await sendSMS(clientPhone, "No problem — whenever you're ready, book at tmwmassage.net or text us here.", null, conversationId);
+      await sendSMS(clientPhone, "No problem — whenever you're ready, book at tmwmassage.net or text us here.", contactId, conversationId);
       _rs.stage = 'done';
     }
     return;
@@ -272,16 +273,17 @@ app.post('/sms/inbound', async (req, res) => {
   // Facial inquiry
   if (isFacialInquiry(incomingText) && (!flowState[contactId || clientPhone] || flowState[contactId || clientPhone].stage === 'reason')) {
     const facialReply = await getMayaReply(incomingText, { stage: 'facial', service: 'facial', context: incomingText });
-    if (facialReply) await sendSMS(clientPhone, facialReply, null, conversationId);
+    if (facialReply) await sendSMS(clientPhone, facialReply, contactId, conversationId);
     await new Promise(r => setTimeout(r, 900));
-   await sendSMS(clientPhone, FACIAL_BOOKING_LINKS[55], null, conversationId);
+    await sendSMS(clientPhone, FACIAL_BOOKING_LINKS[55], contactId, conversationId);
     flowState[contactId || clientPhone] = { stage: 'done', service: 'facial', context: incomingText };
     await slackAlert(`[Maya] :sparkles: Facial inquiry → booking link ${clientPhone}`);
     return;
   }
+
   if (!flowState[key]) flowState[key] = { stage: 'reason', service: null, addOnChosen: null, saunaOffered: false, context: 'first contact' };
   const state = flowState[key];
-  if (state.stage === 'done') { const r = await getMayaReply(incomingText, state); if (r) await sendSMS(clientPhone, r, null, conversationId); return; }
+  if (state.stage === 'done') { const r = await getMayaReply(incomingText, state); if (r) await sendSMS(clientPhone, r, contactId, conversationId); return; }
   const mayaReply = await getMayaReply(incomingText, state);
   const nextStage = advanceStage(state.stage, incomingText);
   if (state.stage === 'addon') {
@@ -294,12 +296,11 @@ app.post('/sms/inbound', async (req, res) => {
       await writeAddonField(contactId, label);
     } else if (no) state.addOnChosen = 'declined';
   }
-  if (mayaReply) await sendSMS(clientPhone, mayaReply, null, conversationId);
-  
+  if (mayaReply) await sendSMS(clientPhone, mayaReply, contactId, conversationId);
   state.stage = nextStage;
   if (state.stage === 'booking') {
     await new Promise(r => setTimeout(r, 900));
-    await sendSMS(clientPhone, resolveBookingLink(state.service), null, conversationId);
+    await sendSMS(clientPhone, resolveBookingLink(state.service), contactId, conversationId);
     state.stage = 'done';
     await slackAlert(`[Maya] :calendar: Booking link sent\n${clientPhone}\nService: ${state.service || 'unknown'}\nAdd-on: ${state.addOnChosen || 'none'}`);
   }
@@ -324,7 +325,6 @@ app.post('/sms/post-booking', async (req, res) => {
   await sendSMS(clientPhone, `A quick note on our cancellation policy: 24 hours notice is required for any cancellations or changes. Less than 24 hours incurs a 50% charge. 6 hours or less incurs a 100% charge. Couples and parties of 2–4 require 48 hours notice. To cancel or reschedule, call 203-304-1313. We look forward to seeing you.`);
   await slackAlert(`[Maya] Post-booking SMS sent → ${clientPhone}${timePart}`);
 });
-
 
 // Serve preferences form
 app.get('/preferences', (req, res) => { res.sendFile(path.join(__dirname, 'preferences-form.html')); });
@@ -371,13 +371,13 @@ app.post('/upgrade/submit', async (req, res) => {
   try {
     await axios.post(`https://services.leadconnectorhq.com/contacts/${contactId}/notes`,
       { body: notes, userId: contactId }, { headers: ghlHeaders() });
-    // Also write add-ons to the Maya Add-Ons custom field
     if (d.addons && d.addons !== 'No Thank You') {
       await writeAddonField(contactId, d.addons);
     }
   } catch (err) { console.error('[UPGRADE NOTE]', err?.response?.data || err.message); }
   await slackAlert(`[Maya] :sparkles: Upgrade submitted\n${d.firstName} ${d.lastName}\nAdd-ons: ${d.addons || 'none'}`);
 });
+
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'maya-sms-tmw', endpoints: ['/sms/inbound', '/sms/post-booking', '/intake', '/preferences', '/upgrade'], ts: new Date().toISOString() });
 });
