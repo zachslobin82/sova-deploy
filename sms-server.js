@@ -37,11 +37,15 @@ function ghlHeaders() {
   return { Authorization: `Bearer ${GHL_BEARER}`, 'Content-Type': 'application/json', Version: '2021-04-15' };
 }
 
-async function sendSMS(toPhone, message, contactId = null) {
+async function sendSMS(toPhone, message, contactId = null, conversationId = null) {
   try {
-    const res = await axios.post('https://services.leadconnectorhq.com/conversations/messages',
-      { type: 'SMS', message, contactPhone: toPhone, fromNumber: FROM_NUMBER, locationId: GHL_LOCATION },
-      { headers: ghlHeaders() });
+    const url = conversationId
+      ? `https://services.leadconnectorhq.com/conversations/${conversationId}/messages`
+      : 'https://services.leadconnectorhq.com/conversations/messages';
+    const payload = conversationId
+      ? { type: 'SMS', message }
+      : { type: 'SMS', message, contactPhone: toPhone, fromNumber: FROM_NUMBER, locationId: GHL_LOCATION };
+    const res = await axios.post(url, payload, { headers: ghlHeaders() });
     console.log(`[SMS SENT] to=${toPhone} status=${res.status}`);
     return res.data;
   } catch (err) { console.error('[SMS ERROR]', err?.response?.data || err.message); throw err; }
@@ -239,11 +243,12 @@ app.post('/sms/inbound', async (req, res) => {
   if (!clientPhone || !incomingText) return;
   if (!contactId) { const c = await getContactByPhone(clientPhone); contactId = c?.id || null; }
   const key = contactId || clientPhone;
+  const conversationId = body.conversationId || null;
   if (isCancellation(incomingText)) {
     await carolynAlert(`[Maya] Cancellation from ${clientPhone}: "${incomingText}"`);
     await slackAlert(`[Maya] :warning: Cancellation\nFrom: ${clientPhone}\nMsg: "${incomingText}"`);
     if (contactId) { try { await axios.post(`https://services.leadconnectorhq.com/contacts/${contactId}/tags`, { tags: ['Cancelled - Needs Rebook'] }, { headers: ghlHeaders() }); } catch (_) {} }
-    await sendSMS(clientPhone, "Got it — I've let the team know. Before you go, can I help you find another time that works? A lot of clients find it easier to rebook now so you don't lose your spot.");
+    await sendSMS(clientPhone, "Got it — I've let the team know. Before you go, can I help you find another time that works? A lot of clients find it easier to rebook now so you don't lose your spot.", null, conversationId);
     flowState[contactId || clientPhone] = { stage: 'rebook', service: null, addOnChosen: null, saunaOffered: false, context: 'cancelled' };
     return;
   }
@@ -252,13 +257,13 @@ app.post('/sms/inbound', async (req, res) => {
   const _rs = flowState[contactId || clientPhone];
   if (_rs?.stage === 'rebook') {
     if (isRebookAcceptance(incomingText)) {
-      await sendSMS(clientPhone, "Here is the link to grab a new time that works for you.");
+      await await sendSMS(clientPhone, "Here is the link to grab a new time that works for you.", null, conversationId);
       await new Promise(r => setTimeout(r, 800));
-      await sendSMS(clientPhone, BOOKING_LINKS[55]);
+     await sendSMS(clientPhone, BOOKING_LINKS[55], null, conversationId);
       _rs.stage = 'done';
       await slackAlert(`[Maya] :recycle: Cancel → rebook ${clientPhone}`);
     } else {
-      await sendSMS(clientPhone, "No problem — whenever you're ready, book at tmwmassage.net or text us here.");
+      await sendSMS(clientPhone, "No problem — whenever you're ready, book at tmwmassage.net or text us here.", null, conversationId);
       _rs.stage = 'done';
     }
     return;
@@ -267,16 +272,16 @@ app.post('/sms/inbound', async (req, res) => {
   // Facial inquiry
   if (isFacialInquiry(incomingText) && (!flowState[contactId || clientPhone] || flowState[contactId || clientPhone].stage === 'reason')) {
     const facialReply = await getMayaReply(incomingText, { stage: 'facial', service: 'facial', context: incomingText });
-    if (facialReply) await sendSMS(clientPhone, facialReply);
+    if (facialReply) await sendSMS(clientPhone, facialReply, null, conversationId);
     await new Promise(r => setTimeout(r, 900));
-    await sendSMS(clientPhone, FACIAL_BOOKING_LINKS[55]);
+   await sendSMS(clientPhone, FACIAL_BOOKING_LINKS[55], null, conversationId);
     flowState[contactId || clientPhone] = { stage: 'done', service: 'facial', context: incomingText };
     await slackAlert(`[Maya] :sparkles: Facial inquiry → booking link ${clientPhone}`);
     return;
   }
   if (!flowState[key]) flowState[key] = { stage: 'reason', service: null, addOnChosen: null, saunaOffered: false, context: 'first contact' };
   const state = flowState[key];
-  if (state.stage === 'done') { const r = await getMayaReply(incomingText, state); if (r) await sendSMS(clientPhone, r); return; }
+  if (state.stage === 'done') { const r = await getMayaReply(incomingText, state); if (r) await sendSMS(clientPhone, r, null, conversationId); return; }
   const mayaReply = await getMayaReply(incomingText, state);
   const nextStage = advanceStage(state.stage, incomingText);
   if (state.stage === 'addon') {
@@ -289,11 +294,12 @@ app.post('/sms/inbound', async (req, res) => {
       await writeAddonField(contactId, label);
     } else if (no) state.addOnChosen = 'declined';
   }
-  if (mayaReply) await sendSMS(clientPhone, mayaReply);
+  if (mayaReply) await sendSMS(clientPhone, mayaReply, null, conversationId);
+  
   state.stage = nextStage;
   if (state.stage === 'booking') {
     await new Promise(r => setTimeout(r, 900));
-    await sendSMS(clientPhone, resolveBookingLink(state.service));
+    await sendSMS(clientPhone, resolveBookingLink(state.service), null, conversationId);
     state.stage = 'done';
     await slackAlert(`[Maya] :calendar: Booking link sent\n${clientPhone}\nService: ${state.service || 'unknown'}\nAdd-on: ${state.addOnChosen || 'none'}`);
   }
