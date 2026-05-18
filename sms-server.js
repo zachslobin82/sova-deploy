@@ -12,9 +12,11 @@
 // ============================================================================
 
 const express = require('express');
+const path = require('path');
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ----------------------------------------------------------------------------
 // CONFIG
@@ -420,6 +422,10 @@ app.post('/sms/post-booking', async (req, res) => {
 });
 
 // ----------------------------------------------------------------------------
+// FORM PAGES
+app.get('/intake', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'intake.html')); });
+app.get('/preferences', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'preferences.html')); });
+
 // HEALTH CHECK
 // ----------------------------------------------------------------------------
 app.get('/health', (req, res) => {
