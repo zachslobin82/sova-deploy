@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session Preferences — Therapeutic Massage & Wellness</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Georgia, 'Times New Roman', serif; background: #FAF7F2; color: #1C1A17; min-height: 100vh; }
+  .header { background: #1C1A17; padding: 28px 24px; text-align: center; }
+  .header h1 { font-size: 22px; font-weight: normal; color: #FAF7F2; letter-spacing: 2px; text-transform: uppercase; }
+  .header p { font-size: 13px; color: #9a9080; margin-top: 6px; font-family: -apple-system, sans-serif; letter-spacing: 0.5px; }
+  .container { max-width: 640px; margin: 36px auto; padding: 0 20px 80px; }
+  .notice { background: #fff8ee; border-left: 3px solid #c9a96e; border-radius: 4px; padding: 16px 20px; margin-bottom: 28px; font-family: -apple-system, sans-serif; font-size: 13px; color: #6b5c3e; line-height: 1.6; }
+  .section { background: #fff; border-radius: 8px; padding: 28px; margin-bottom: 20px; border: 1px solid #ede9e3; }
+  .section h2 { font-size: 13px; font-weight: normal; letter-spacing: 2px; text-transform: uppercase; color: #9a9080; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #f0ece6; font-family: -apple-system, sans-serif; }
+  .field { margin-bottom: 18px; }
+  .field label { display: block; font-size: 13px; color: #555; margin-bottom: 10px; font-family: -apple-system, sans-serif; line-height: 1.5; }
+  .radio-group, .check-group { display: flex; gap: 10px; flex-wrap: wrap; }
+  .radio-group label, .check-group label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-family: -apple-system, sans-serif; color: #444; cursor: pointer; background: #faf7f2; border: 1px solid #ddd8d0; border-radius: 20px; padding: 7px 14px; transition: all 0.15s; }
+  .radio-group input, .check-group input { display: none; }
+  .radio-group label:has(input:checked), .check-group label:has(input:checked) { background: #1C1A17; color: #FAF7F2; border-color: #1C1A17; }
+  .submit-btn { width: 100%; background: #1C1A17; color: #FAF7F2; border: none; padding: 16px; font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase; font-family: -apple-system, sans-serif; border-radius: 6px; cursor: pointer; margin-top: 24px; transition: opacity 0.2s; }
+  .submit-btn:hover { opacity: 0.85; }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .success { text-align: center; padding: 60px 20px; }
+  .success h2 { font-size: 24px; font-weight: normal; color: #1C1A17; margin-bottom: 12px; }
+  .success p { font-size: 14px; color: #888; font-family: -apple-system, sans-serif; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Therapeutic Massage & Wellness</h1>
+  <p>Help us tailor your session</p>
+</div>
+<div class="container" id="formContainer">
+  <div class="notice">
+    We want your session to be exactly what you need. Take a moment to share your preferences — your therapist will review these before you arrive.
+  </div>
+
+  <form id="prefsForm">
+    <div class="section">
+      <h2>Complimentary Standards</h2>
+      <div class="field">
+        <label>All sessions come with complimentary standards — choose from the following:</label>
+        <div class="check-group">
+          <label><input type="checkbox" name="standards" value="I Would Like All Standards"><span>I Would Like All Standards</span></label>
+          <label><input type="checkbox" name="standards" value="Low Table Heat"><span>Low Table Heat</span></label>
+          <label><input type="checkbox" name="standards" value="Warm Neck Bolster"><span>Warm Neck Bolster</span></label>
+          <label><input type="checkbox" name="standards" value="Hot Towels For Feet"><span>Hot Towels For Feet</span></label>
+          <label><input type="checkbox" name="standards" value="Hot Towels For Back"><span>Hot Towels For Back</span></label>
+          <label><input type="checkbox" name="standards" value="Warm Eye Mask"><span>Warm Eye Mask</span></label>
+          <label><input type="checkbox" name="standards" value="Sinus Opener (Peppermint)"><span>Sinus Opener (Peppermint)</span></label>
+          <label><input type="checkbox" name="standards" value="None Of The Above"><span>None Of The Above</span></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>During Your Session</h2>
+      <div class="field">
+        <label>Do you enjoy conversation during your massage?</label>
+        <div class="radio-group">
+          <label><input type="radio" name="conversation" value="Yes — I enjoy light conversation"><span>Yes, I enjoy conversation</span></label>
+          <label><input type="radio" name="conversation" value="No — I prefer quiet"><span>No, I prefer quiet</span></label>
+          <label><input type="radio" name="conversation" value="Either is fine"><span>Either is fine</span></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Relaxation Experience</h2>
+      <div class="field">
+        <label>Would you like to add a relaxation experience before or after your massage? (Infrared Sauna, Cold Plunge, Float, Red Light)</label>
+        <div class="radio-group">
+          <label><input type="radio" name="relaxation" value="Before"><span>Before</span></label>
+          <label><input type="radio" name="relaxation" value="After"><span>After</span></label>
+          <label><input type="radio" name="relaxation" value="No Thank You"><span>No thank you</span></label>
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="submit-btn" id="submitBtn">Submit Preferences</button>
+  </form>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const contactId = params.get('contactId') || '';
+const phone = params.get('phone') || '';
+const firstName = params.get('firstName') || '';
+
+document.getElementById('prefsForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+
+  const data = { contactId, phone, firstName };
+  new FormData(e.target).forEach((val, key) => {
+    if (data[key]) { data[key] = data[key] + ', ' + val; }
+    else { data[key] = val; }
+  });
+
+  try {
+    const res = await fetch('/preferences/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (res.ok) {
+      document.getElementById('formContainer').innerHTML = `
+        <div class="success">
+          <h2>Thank you${firstName ? ', ' + firstName : ''}.</h2>
+          <p>Your preferences have been saved. We look forward to your visit.</p>
+        </div>`;
+    } else { throw new Error(); }
+  } catch {
+    btn.disabled = false;
+    btn.textContent = 'Submit Preferences';
+    alert('Something went wrong. Please call us at 203-304-1313.');
+  }
+});
+</script>
+</body>
+</html>
