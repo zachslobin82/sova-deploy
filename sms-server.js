@@ -499,6 +499,7 @@ app.post('/preferences/submit', async (req, res) => {
       '',
       `STANDARDS: ${d.standards || 'not selected'}`,
       `CONVERSATION: ${d.conversation || 'not answered'}`,
+      `RECOVERY INTEREST: ${d.recovery || 'none'}`,
     ].join('\n');
     if (contactId) {
       try {
