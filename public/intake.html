@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Massage Intake Form — Therapeutic Massage & Wellness</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Georgia, 'Times New Roman', serif; background: #FAF7F2; color: #1C1A17; min-height: 100vh; }
+  .header { background: #1C1A17; padding: 28px 24px; text-align: center; }
+  .header h1 { font-size: 22px; font-weight: normal; color: #FAF7F2; letter-spacing: 2px; text-transform: uppercase; }
+  .header p { font-size: 13px; color: #9a9080; margin-top: 6px; font-family: -apple-system, sans-serif; letter-spacing: 0.5px; }
+  .container { max-width: 640px; margin: 36px auto; padding: 0 20px 80px; }
+  .notice { background: #fff8ee; border-left: 3px solid #c9a96e; border-radius: 4px; padding: 16px 20px; margin-bottom: 28px; font-family: -apple-system, sans-serif; font-size: 13px; color: #6b5c3e; line-height: 1.6; }
+  .section { background: #fff; border-radius: 8px; padding: 28px; margin-bottom: 20px; border: 1px solid #ede9e3; }
+  .section h2 { font-size: 13px; font-weight: normal; letter-spacing: 2px; text-transform: uppercase; color: #9a9080; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #f0ece6; font-family: -apple-system, sans-serif; }
+  .field { margin-bottom: 18px; }
+  .field label { display: block; font-size: 13px; color: #555; margin-bottom: 6px; font-family: -apple-system, sans-serif; }
+  .field input[type="text"], .field input[type="date"], .field input[type="email"], .field input[type="tel"], .field textarea, .field select { width: 100%; padding: 10px 14px; border: 1px solid #ddd8d0; border-radius: 5px; font-size: 14px; background: #fdfcfa; color: #1C1A17; font-family: -apple-system, sans-serif; outline: none; transition: border-color 0.2s; }
+  .field input:focus, .field textarea:focus, .field select:focus { border-color: #1C1A17; }
+  .field textarea { resize: vertical; min-height: 80px; }
+  .radio-group, .check-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+  .radio-group label, .check-group label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-family: -apple-system, sans-serif; color: #444; cursor: pointer; background: #faf7f2; border: 1px solid #ddd8d0; border-radius: 20px; padding: 7px 14px; transition: all 0.15s; }
+  .radio-group input, .check-group input { display: none; }
+  .radio-group input:checked + span, .check-group input:checked + span { color: #1C1A17; font-weight: 600; }
+  .radio-group label:has(input:checked), .check-group label:has(input:checked) { background: #1C1A17; color: #FAF7F2; border-color: #1C1A17; }
+  .radio-group label:has(input:checked) span, .check-group label:has(input:checked) span { color: #FAF7F2; }
+  .conditional { display: none; margin-top: 12px; padding: 14px; background: #faf7f2; border-radius: 6px; border: 1px solid #ede9e3; }
+  .conditional.show { display: block; }
+  .checkbox-policy { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+  .checkbox-policy input[type="checkbox"] { margin-top: 2px; width: 16px; height: 16px; cursor: pointer; accent-color: #1C1A17; }
+  .checkbox-policy span { font-size: 13px; color: #555; font-family: -apple-system, sans-serif; line-height: 1.6; }
+  .submit-btn { width: 100%; background: #1C1A17; color: #FAF7F2; border: none; padding: 16px; font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase; font-family: -apple-system, sans-serif; border-radius: 6px; cursor: pointer; margin-top: 24px; transition: opacity 0.2s; }
+  .submit-btn:hover { opacity: 0.85; }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .success { text-align: center; padding: 60px 20px; }
+  .success h2 { font-size: 24px; font-weight: normal; color: #1C1A17; margin-bottom: 12px; }
+  .success p { font-size: 14px; color: #888; font-family: -apple-system, sans-serif; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 480px) { .two-col { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Therapeutic Massage & Wellness</h1>
+  <p>Massage Intake Form — Please complete before your visit</p>
+</div>
+<div class="container" id="formContainer">
+  <div class="notice">
+    This form helps your therapist prepare for your session. All information is confidential and used solely to provide you with the best possible care.
+  </div>
+
+  <form id="intakeForm">
+    <!-- Personal Info -->
+    <div class="section">
+      <h2>Personal Information</h2>
+      <div class="two-col">
+        <div class="field">
+          <label>First Name</label>
+          <input type="text" name="firstName" required>
+        </div>
+        <div class="field">
+          <label>Last Name</label>
+          <input type="text" name="lastName" required>
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="field">
+          <label>Date of Birth</label>
+          <input type="date" name="dob" required>
+        </div>
+        <div class="field">
+          <label>Phone</label>
+          <input type="tel" name="phone" required>
+        </div>
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" name="email">
+      </div>
+      <div class="field">
+        <label>Address</label>
+        <input type="text" name="address" placeholder="Street address">
+      </div>
+      <div class="two-col">
+        <div class="field">
+          <input type="text" name="city" placeholder="City">
+        </div>
+        <div class="field">
+          <input type="text" name="zip" placeholder="ZIP code">
+        </div>
+      </div>
+      <div class="field">
+        <label>Is the client a minor (under 18)?</label>
+        <div class="radio-group">
+          <label><input type="radio" name="isMinor" value="No"><span>No</span></label>
+          <label><input type="radio" name="isMinor" value="Yes"><span>Yes</span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Health Info -->
+    <div class="section">
+      <h2>Health Information</h2>
+      <div class="field">
+        <label>Are you currently taking any medications?</label>
+        <div class="radio-group" id="medsRadio">
+          <label><input type="radio" name="medications" value="No" onclick="toggleConditional('medsDetail', false)"><span>No</span></label>
+          <label><input type="radio" name="medications" value="Yes" onclick="toggleConditional('medsDetail', true)"><span>Yes</span></label>
+        </div>
+        <div class="conditional" id="medsDetail">
+          <textarea name="medicationsDetail" placeholder="Please list medications and dosages"></textarea>
+        </div>
+      </div>
+      <div class="field">
+        <label>Are you pregnant?</label>
+        <div class="radio-group">
+          <label><input type="radio" name="pregnant" value="No" onclick="toggleConditional('pregnantDetail', false)"><span>No</span></label>
+          <label><input type="radio" name="pregnant" value="Yes" onclick="toggleConditional('pregnantDetail', true)"><span>Yes</span></label>
+        </div>
+        <div class="conditional" id="pregnantDetail">
+          <div class="field">
+            <label>How many weeks?</label>
+            <input type="text" name="pregnantWeeks">
+          </div>
+          <div class="field">
+            <label>Any risk factors?</label>
+            <input type="text" name="pregnantRiskFactors">
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Do you experience chronic pain?</label>
+        <div class="radio-group">
+          <label><input type="radio" name="chronicPain" value="No" onclick="toggleConditional('painDetail', false)"><span>No</span></label>
+          <label><input type="radio" name="chronicPain" value="Yes" onclick="toggleConditional('painDetail', true)"><span>Yes</span></label>
+        </div>
+        <div class="conditional" id="painDetail">
+          <div class="field">
+            <label>Contributing factors (stress, posture, injuries, etc.)</label>
+            <input type="text" name="painFactors">
+          </div>
+          <div class="field">
+            <label>Any injuries we should know about?</label>
+            <input type="text" name="injuries">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Medical Conditions -->
+    <div class="section">
+      <h2>Medical Conditions</h2>
+      <div class="field">
+        <label>Please select any that apply:</label>
+        <div class="check-group" style="margin-top: 10px;">
+          <label><input type="checkbox" name="conditions" value="High Blood Pressure"><span>High Blood Pressure</span></label>
+          <label><input type="checkbox" name="conditions" value="Heart Condition"><span>Heart Condition</span></label>
+          <label><input type="checkbox" name="conditions" value="Diabetes"><span>Diabetes</span></label>
+          <label><input type="checkbox" name="conditions" value="Cancer"><span>Cancer</span></label>
+          <label><input type="checkbox" name="conditions" value="Osteoporosis"><span>Osteoporosis</span></label>
+          <label><input type="checkbox" name="conditions" value="Skin Condition"><span>Skin Condition</span></label>
+          <label><input type="checkbox" name="conditions" value="Autoimmune Disorder"><span>Autoimmune Disorder</span></label>
+          <label><input type="checkbox" name="conditions" value="None of the Above"><span>None of the Above</span></label>
+        </div>
+        <div class="conditional" id="conditionsDetail" style="margin-top: 12px;">
+          <textarea name="conditionsDetail" placeholder="Please provide details about your condition(s)"></textarea>
+        </div>
+      </div>
+      <div class="field" style="margin-top: 8px;">
+        <label>Do you have any fragrance or product allergies?</label>
+        <div class="radio-group">
+          <label><input type="radio" name="fragranceAllergies" value="No"><span>No</span></label>
+          <label><input type="radio" name="fragranceAllergies" value="Yes"><span>Yes — please inform your therapist</span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Policy Agreement -->
+    <div class="section">
+      <h2>Cancellation Policy</h2>
+      <p style="font-family: -apple-system, sans-serif; font-size: 13px; color: #666; line-height: 1.7; margin-bottom: 18px;">
+        24 hours notice is required for cancellations or changes. Less than 24 hours incurs a 50% charge. 6 hours or less incurs a 100% charge. No-shows are charged in full. To cancel or reschedule, call <strong>203-304-1313</strong>.
+      </p>
+      <div class="field">
+        <label class="checkbox-policy">
+          <input type="checkbox" name="agreedToPolicy" required>
+          <span>I have read and agree to the cancellation policy. I understand that by receiving massage therapy I am consenting to professional touch for therapeutic purposes.</span>
+        </label>
+      </div>
+    </div>
+
+    <button type="submit" class="submit-btn" id="submitBtn">Submit Intake Form</button>
+  </form>
+</div>
+
+<script>
+function toggleConditional(id, show) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('show', show);
+}
+
+// Show conditions detail when any condition besides "None" is checked
+document.querySelectorAll('input[name="conditions"]').forEach(cb => {
+  cb.addEventListener('change', () => {
+    const anyChecked = Array.from(document.querySelectorAll('input[name="conditions"]:checked'))
+      .some(c => c.value !== 'None of the Above');
+    const detail = document.getElementById('conditionsDetail');
+    if (detail) detail.classList.toggle('show', anyChecked);
+  });
+});
+
+// Get URL params
+const params = new URLSearchParams(window.location.search);
+const contactId = params.get('contactId') || '';
+const phone = params.get('phone') || '';
+const firstName = params.get('firstName') || '';
+
+// Pre-fill if available
+if (firstName) {
+  const fn = document.querySelector('input[name="firstName"]');
+  if (fn) fn.value = firstName;
+}
+if (phone) {
+  const ph = document.querySelector('input[name="phone"]');
+  if (ph) ph.value = phone;
+}
+
+document.getElementById('intakeForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+
+  const form = e.target;
+  const data = { contactId, phone };
+
+  // Collect all fields
+  new FormData(form).forEach((val, key) => {
+    if (data[key]) {
+      data[key] = data[key] + ', ' + val;
+    } else {
+      data[key] = val;
+    }
+  });
+
+  try {
+    const res = await fetch('/intake/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+
+    if (res.ok) {
+      document.getElementById('formContainer').innerHTML = `
+        <div class="success">
+          <h2>Thank you, ${firstName || data.firstName || 'there'}.</h2>
+          <p>Your intake form has been received. We look forward to seeing you.</p>
+        </div>`;
+    } else {
+      throw new Error('Server error');
+    }
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'Submit Intake Form';
+    alert('Something went wrong. Please try again or call us at 203-304-1313.');
+  }
+});
+</script>
+</body>
+</html>
