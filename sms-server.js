@@ -422,6 +422,99 @@ app.post('/sms/post-booking', async (req, res) => {
 });
 
 // ----------------------------------------------------------------------------
+// INTAKE FORM SUBMISSION
+app.post('/intake/submit', async (req, res) => {
+  res.sendStatus(200);
+  try {
+    const d = req.body;
+    const contactId = d.contactId || null;
+    const phone = d.phone || null;
+
+    // Build GHL note
+    const notes = [
+      'MASSAGE INTAKE FORM',
+      `Submitted: ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}`,
+      '',
+      `DOB: ${d.dob || 'n/a'}`,
+      `Address: ${[d.address, d.city, d.zip].filter(Boolean).join(', ')}`,
+      `Minor: ${d.isMinor || 'n/a'}`,
+      '',
+      `MEDICATIONS: ${d.medications || 'n/a'}`,
+      d.medicationsDetail ? `Detail: ${d.medicationsDetail}` : null,
+      '',
+      `PREGNANT: ${d.pregnant || 'n/a'}`,
+      d.pregnantWeeks ? `Weeks: ${d.pregnantWeeks}` : null,
+      d.pregnantRiskFactors ? `Risk: ${d.pregnantRiskFactors}` : null,
+      '',
+      `CHRONIC PAIN: ${d.chronicPain || 'none'}`,
+      d.painFactors ? `Factors: ${d.painFactors}` : null,
+      d.injuries ? `Injuries: ${d.injuries}` : null,
+      '',
+      `CONDITIONS: ${d.conditions || 'None'}`,
+      d.conditionsDetail ? `Detail: ${d.conditionsDetail}` : null,
+      '',
+      `FRAGRANCE ALLERGIES: ${d.fragranceAllergies || 'none'}`,
+      '',
+      `PREVIOUS MASSAGE: ${d.previousMassage || 'n/a'}`,
+      `MASSAGE TYPE SEEKING: ${d.massageType || 'n/a'}`,
+      `PRESSURE PREFERENCE: ${d.pressure || 'n/a'}`,
+      `SESSION GOALS: ${d.sessionGoals || 'n/a'}`,
+      `PROMOTIONS OPT-IN: ${d.promotions || 'n/a'}`,
+      '',
+      'AGREED TO POLICIES: Yes',
+    ].filter(l => l !== null).join('\n');
+
+    if (contactId) {
+      try {
+        await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}/notes`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, 'Content-Type': 'application/json', Version: '2021-04-15' },
+          body: JSON.stringify({ body: notes, userId: contactId }),
+        });
+        await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, 'Content-Type': 'application/json', Version: '2021-04-15' },
+          body: JSON.stringify({
+            firstName: d.firstName, lastName: d.lastName,
+            email: d.email, phone: d.phone,
+            address1: d.address, city: d.city, postalCode: d.zip,
+            dateOfBirth: d.dob, tags: ['Intake Form Completed'],
+          }),
+        });
+      } catch (err) { console.error('[INTAKE] GHL write error:', err.message); }
+    }
+    await alertSlack(`[Maya] :clipboard: Intake submitted\n${d.firstName} ${d.lastName} (${phone})\nConditions: ${d.conditions || 'none'}`);
+    console.log(`[INTAKE] Submitted for ${d.firstName} ${d.lastName}`);
+  } catch (err) { console.error('[INTAKE ERROR]', err.message); }
+});
+
+// PREFERENCES FORM SUBMISSION
+app.post('/preferences/submit', async (req, res) => {
+  res.sendStatus(200);
+  try {
+    const d = req.body;
+    const contactId = d.contactId || null;
+    const notes = [
+      'MASSAGE PREFERENCES',
+      `Submitted: ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}`,
+      '',
+      `STANDARDS: ${d.standards || 'not selected'}`,
+      `CONVERSATION: ${d.conversation || 'not answered'}`,
+    ].join('\n');
+    if (contactId) {
+      try {
+        await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}/notes`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, 'Content-Type': 'application/json', Version: '2021-04-15' },
+          body: JSON.stringify({ body: notes, userId: contactId }),
+        });
+      } catch (err) { console.error('[PREFS] GHL write error:', err.message); }
+    }
+    await alertSlack(`[Maya] :memo: Preferences submitted\n${d.firstName || 'Client'}\nStandards: ${d.standards || 'none'}\nConversation: ${d.conversation || 'n/a'}`);
+    console.log('[PREFS] Submitted');
+  } catch (err) { console.error('[PREFS ERROR]', err.message); }
+});
+
 // FORM PAGES
 app.get('/intake', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'intake.html')); });
 app.get('/preferences', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'preferences.html')); });
