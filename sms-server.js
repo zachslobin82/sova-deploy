@@ -384,6 +384,42 @@ app.post('/sms/inbound', async (req, res) => {
 });
 
 // ----------------------------------------------------------------------------
+// POST-BOOKING: Intake form + cancellation policy
+// ----------------------------------------------------------------------------
+app.post('/sms/post-booking', async (req, res) => {
+  res.sendStatus(200);
+  try {
+    const body = req.body;
+    const clientPhone = body.phone || body.contact?.phone;
+    const firstName = body.first_name || body.firstName || body.contact?.firstName || '';
+    const apptTime = body.appointment_t || body.appointmentTime || body.startTime || '';
+    if (!clientPhone) return;
+
+    let timeStr = '';
+    if (apptTime) {
+      try {
+        timeStr = new Date(apptTime).toLocaleString('en-US', {
+          weekday: 'short', month: 'long', day: 'numeric',
+          hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York'
+        });
+      } catch (_) { timeStr = apptTime; }
+    }
+
+    const namePart = firstName ? `${firstName}, ` : '';
+    const timePart = timeStr ? ` on ${timeStr}` : '';
+    const INTAKE_URL = 'https://sova-deploy-production.up.railway.app/intake';
+
+    await sendGhlSms(clientPhone, `${namePart}you're all set${timePart}. Before you come in, please fill out your intake form — it helps your therapist prepare: ${INTAKE_URL}`);
+    await new Promise(r => setTimeout(r, 1500));
+    await sendGhlSms(clientPhone, `A quick note on our cancellation policy: 24 hours notice is required for any cancellations or changes. Less than 24 hours incurs a 50% charge. 6 hours or less incurs a 100% charge. To cancel or reschedule, call 203-304-1313. We look forward to seeing you.`);
+    await alertSlack(`[Maya] :clipboard: Post-booking SMS sent → ${clientPhone}${timePart}`);
+    console.log(`[POST-BOOKING] SMS sent to ${clientPhone}`);
+  } catch (err) {
+    console.error('[POST-BOOKING ERROR]', err.message);
+  }
+});
+
+// ----------------------------------------------------------------------------
 // HEALTH CHECK
 // ----------------------------------------------------------------------------
 app.get('/health', (req, res) => {
