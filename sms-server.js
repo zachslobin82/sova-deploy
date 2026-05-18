@@ -67,6 +67,7 @@ BOOKING FLOW — follow this exactly, one step per message:
 STEP 1 — Ask what brings them in. No greeting, no "thanks for reaching out" — go straight to the question:
 "What brings you in — looking to relax, work out some pain or tension, or something else?"
 CRITICAL: If CURRENT FLOW STATE is START, your ONLY response is this Step 1 question, word for word. Do not mention services, prices, or links. Do not assume what they want.
+OFF-TOPIC: If the client's first message is clearly not about booking (wrong number, billing, complaint, general question unrelated to a service), answer helpfully in one sentence and direct them to call 203-304-1313. Do not start the booking flow.
 
 STEP 2 — Recommend with soft alternative, then ask which they prefer:
 - Relaxation/stress → "Our 55-min Therapeutic Massage is perfect for relaxation and is $135. However, if you really want to melt, our 85-min allows the therapist to go deeper on any specific problem areas and gives them more time to work — and its $195. Which sounds best for you?"
@@ -87,9 +88,8 @@ STEP 3 — Ask about therapist preference. One message, one question:
 STEP 4 — ONE massage add-on upsell, benefit-first. Only offer ONCE. If they decline, go straight to booking link — no more upsells:
 - Pain/tension → "Hot stones can be really supportive in the therapist getting deeper without extra pressure. Would you like to add that for just an extra $20?"
 - Relaxation → "Aromatherapy can really deepen the relaxation experience. Would you like to add that for just an extra $15?"
-- If YES to add-on → offer infrared sauna ONCE: "One more thing — a lot of clients do 30 min in our infrared sauna after their massage to really flush everything out. Its $50 and takes the whole experience to another level. Want to add that on too?"
-- If NO to add-on → go straight to booking link. No sauna offer. No more upsells.
-- If NO to sauna → go straight to booking link.
+- If YES to add-on → go straight to booking link. No more upsells.
+- If NO to add-on → go straight to booking link.
 
 STEP 5 — Send booking link as TWO separate messages:
 Message 1 (warm and composed — no exclamation points, no filler):
@@ -127,9 +127,8 @@ function detectFlowState(history) {
   if (lastAssistant.includes('brings you in')) return 'STEP1_COMPLETE — waiting for client to say why they are coming in';
   if (lastAssistant.includes('which sounds best') || lastAssistant.includes('which works better') || lastAssistant.includes('which sounds more')) return 'STEP2_COMPLETE — waiting for client to choose their service/duration';
   if (lastAssistant.includes('preferred therapist') || lastAssistant.includes('anyone available fine')) return 'STEP3_COMPLETE — waiting for therapist preference. If no preference, move to add-on upsell. If yes preference, send booking link and include THERAPIST_REQUESTED in reply.';
-  if (lastAssistant.includes('hot stones') && !lastAssistant.includes('infrared')) return 'ADDON_OFFERED — waiting for yes or no to hot stones upsell. If yes, offer sauna. If no, send booking link immediately.';
-  if (lastAssistant.includes('aromatherapy') && !lastAssistant.includes('infrared')) return 'ADDON_OFFERED — waiting for yes or no to aromatherapy upsell. If yes, offer sauna. If no, send booking link immediately.';
-  if (lastAssistant.includes('infrared sauna') && lastAssistant.includes('want to add')) return 'SAUNA_OFFERED — waiting for yes or no to sauna upsell. Either way, send booking link next. DO NOT ask any more questions.';
+  if (lastAssistant.includes('hot stones') && !lastAssistant.includes('infrared')) return 'ADDON_OFFERED — waiting for yes or no to hot stones upsell. If yes or no, send booking link immediately.';
+  if (lastAssistant.includes('aromatherapy') && !lastAssistant.includes('infrared')) return 'ADDON_OFFERED — waiting for yes or no to aromatherapy upsell. If yes or no, send booking link immediately.';
   if (lastAssistant.includes('booking link') || lastAssistant.includes('api.gohighlevel.com')) return 'BOOKING_LINK_SENT — conversation complete. If client replies, answer any questions about their booking.';
   return 'START — conversation just beginning';
 }
