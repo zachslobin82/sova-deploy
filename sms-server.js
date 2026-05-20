@@ -349,6 +349,15 @@ app.post('/sms/inbound', async (req, res) => {
       await alertSlack(`[Maya] :warning: Cancellation\nFrom: ${clientPhone}\nMsg: "${incomingMessage}"`);
     }
 
+    // Recovery upsell YES intercept — short-circuits Maya for this reply only
+    if (isRecoveryYes(clientPhone, incomingMessage)) {
+      console.log('[RECOVERY YES] Client opted in — alerting Carolyn via Slack');
+      await alertSlack(`[Maya] :muscle: Recovery Upsell — YES\nPhone: ${clientPhone}\nAction needed: Check availability and text client to confirm recovery service + time.`);
+      await sendGhlSms(clientPhone, `Great — someone from our team will reach out shortly to confirm availability and get that set up for you.`);
+      recoveryUpsellSent.delete(clientPhone);
+      return;
+    }
+
     const mayaReply = await getMayaResponse(clientPhone, incomingMessage);
     const cleanReply = mayaReply.replace(/THERAPIST_REQUESTED/g, '').trim();
     console.log(`[MAYA REPLY] → "${cleanReply}"`);
@@ -386,8 +395,26 @@ app.post('/sms/inbound', async (req, res) => {
 });
 
 // ----------------------------------------------------------------------------
-// POST-BOOKING: Intake form + cancellation policy
+// POST-BOOKING: Intake form + cancellation policy + recovery upsell
 // ----------------------------------------------------------------------------
+
+// Track phones that have been sent a recovery upsell (in-memory, resets on restart)
+const recoveryUpsellSent = new Set();
+
+function getRecoveryUpsell(concern) {
+  const c = (concern || '').toLowerCase();
+  if (c.includes('neck') || c.includes('shoulder') || c.includes('tension') || c.includes('back') || c.includes('pain') || c.includes('muscle')) {
+    return `One more thing — many clients with muscle tension love pairing their massage with infrared sauna beforehand. The heat loosens tissue so your therapist can work deeper. It's $40 for 20 min. Reply YES if you'd like us to check availability around your appointment.`;
+  }
+  if (c.includes('sport') || c.includes('recover') || c.includes('athletic') || c.includes('workout')) {
+    return `One more thing — for recovery-focused sessions, compression therapy pairs really well with massage. It flushes soreness and accelerates muscle repair. 30 min is $40. Reply YES if you'd like us to check availability around your appointment.`;
+  }
+  if (c.includes('stress') || c.includes('relax')) {
+    return `One more thing — float therapy is the ultimate complement to a relaxation massage. 60 minutes of complete sensory rest — it takes the experience to a different level. From $95. Reply YES if you'd like us to check availability around your appointment.`;
+  }
+  return `One more thing — many of our clients add a recovery experience before or after their session — sauna, float, cold plunge, and more. Reply YES if you'd like us to check what's available around your appointment time.`;
+}
+
 app.post('/sms/post-booking', async (req, res) => {
   res.sendStatus(200);
   try {
@@ -395,6 +422,7 @@ app.post('/sms/post-booking', async (req, res) => {
     const clientPhone = body.phone || body.contact?.phone;
     const firstName = body.first_name || body.firstName || body.contact?.firstName || '';
     const apptTime = body.appointment_t || body.appointmentTime || body.startTime || '';
+    const concern = body.concern || body.sessionType || '';
     if (!clientPhone) return;
 
     let timeStr = '';
@@ -411,15 +439,33 @@ app.post('/sms/post-booking', async (req, res) => {
     const timePart = timeStr ? ` on ${timeStr}` : '';
     const INTAKE_URL = 'https://sova-deploy-production.up.railway.app/intake';
 
+    // MSG 1 — confirmation + intake form
     await sendGhlSms(clientPhone, `${namePart}you're all set${timePart}. Before you come in, please fill out your intake form — it helps your therapist prepare: ${INTAKE_URL}`);
     await new Promise(r => setTimeout(r, 1500));
-    await sendGhlSms(clientPhone, `A quick note on our cancellation policy: 24 hours notice is required for any cancellations or changes. Less than 24 hours incurs a 50% charge. 6 hours or less incurs a 100% charge. To cancel or reschedule, call 203-304-1313. We look forward to seeing you.`);
+
+    // MSG 2 — cancellation policy
+    await sendGhlSms(clientPhone, `A quick note on our cancellation policy: 24 hours notice is required for any cancellations or changes. Less than 24 hours incurs a 50% charge. 6 hours or less incurs a 100% charge. To cancel or reschedule, call 203-304-1313.`);
+    await new Promise(r => setTimeout(r, 1500));
+
+    // MSG 3 — recovery upsell
+    const upsellMsg = getRecoveryUpsell(concern);
+    await sendGhlSms(clientPhone, upsellMsg);
+    recoveryUpsellSent.add(clientPhone);
+
     await alertSlack(`[Maya] :clipboard: Post-booking SMS sent → ${clientPhone}${timePart}`);
     console.log(`[POST-BOOKING] SMS sent to ${clientPhone}`);
   } catch (err) {
     console.error('[POST-BOOKING ERROR]', err.message);
   }
 });
+
+// RECOVERY UPSELL YES HANDLER — fires when client replies YES after post-booking
+// Detected in /sms/inbound before Maya processes it
+function isRecoveryYes(phone, message) {
+  if (!recoveryUpsellSent.has(phone)) return false;
+  const m = message.toLowerCase().trim();
+  return m === 'yes' || m === 'yes please' || m === 'yeah' || m === 'yep' || m === 'sure' || m === 'definitely';
+}
 
 // ----------------------------------------------------------------------------
 // INTAKE FORM SUBMISSION
@@ -500,7 +546,7 @@ app.post('/preferences/submit', async (req, res) => {
       '',
       `STANDARDS: ${d.standards || 'not selected'}`,
       `CONVERSATION: ${d.conversation || 'not answered'}`,
-      `RECOVERY INTEREST: ${d.recovery || 'none'}`,
+      `ADD-ONS REQUESTED: ${d.addons || 'none'}`,
     ].join('\n');
     if (contactId) {
       try {
@@ -509,9 +555,17 @@ app.post('/preferences/submit', async (req, res) => {
           headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, 'Content-Type': 'application/json', Version: '2021-04-15' },
           body: JSON.stringify({ body: notes, userId: contactId }),
         });
+        // Also write add-ons to the Maya add-ons custom field if present
+        if (d.addons && d.addons !== 'No Thank You') {
+          await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, 'Content-Type': 'application/json', Version: '2021-07-28' },
+            body: JSON.stringify({ customFields: [{ id: '8EOok3x105CyQIIJyMtx', value: d.addons }] }),
+          });
+        }
       } catch (err) { console.error('[PREFS] GHL write error:', err.message); }
     }
-    await alertSlack(`[Maya] :memo: Preferences submitted\n${d.firstName || 'Client'}\nStandards: ${d.standards || 'none'}\nConversation: ${d.conversation || 'n/a'}`);
+    await alertSlack(`[Maya] :memo: Preferences submitted\n${d.firstName || 'Client'}\nStandards: ${d.standards || 'none'}\nConversation: ${d.conversation || 'n/a'}\nAdd-ons: ${d.addons || 'none'}`);
     console.log('[PREFS] Submitted');
   } catch (err) { console.error('[PREFS ERROR]', err.message); }
 });
