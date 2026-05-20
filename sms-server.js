@@ -103,13 +103,13 @@ BOOKING LINKS:
 - 25 min: https://api.gohighlevel.com/widget/booking/uBLikuiy9gCI2MDItdz5
 - 55 min: https://api.gohighlevel.com/widget/booking/HFlTUh76tUn01FHsf9Hi
 - 85 min: https://api.gohighlevel.com/widget/booking/GDhkZy8h9CtjAOPPKlgR
-- 2 hr: https://api.gohighlevel.com/widget/booking/tFKqGwFxE5Ka5626we5X
+- 110 min: https://api.gohighlevel.com/widget/booking/tFKqGwFxE5Ka5626we5X
 
 IF THEY HAVE A QUESTION (not booking):
 Answer using the business info and pricing below, then naturally invite them to book.
 
 SERVICES & PRICING
-MASSAGE: Therapeutic $135/55min $195/85min $260/2hr | Deep Muscle $145/55min $205/85min $290/2hr | Sports/Stretching $135/55min $205/85min | Hot Stone $145/55min $205/85min $290/2hr | Aromatherapy $145/55min $205/85min $290/2hr | Mother-To-Be $145/55min $205/85min | TMW Signature De-Stress $145/55min $205/85min $290/2hr | Head/Hands/Feet $80/25min $125/55min | Teen Massage $105/55min
+MASSAGE: Therapeutic $135/55min $195/85min $260/110min | Deep Muscle $145/55min $205/85min $290/110min | Sports/Stretching $135/55min $205/85min | Hot Stone $145/55min $205/85min $290/110min | Aromatherapy $145/55min $205/85min $290/110min | Mother-To-Be $145/55min $205/85min | TMW Signature De-Stress $145/55min $205/85min $290/110min | Head/Hands/Feet $80/25min $125/55min | Teen Massage $105/55min
 FACIALS: TMW Signature Glow $80/25min $160/55min $225/85min | Lymphatic Facial $80/25min $160/55min $225/85min | Anti-Aging $160/55min $225/85min | Active Clearing $150/55min $225/85min | Ultra Radiance $150/55min $220/85min | Gentlemens $150/55min $220/85min | Teen Facial $115 | Back Facial $150/55min
 RECOVERY: Float $95/60min $125/90min $160/120min | Infrared Sauna $40/20min $50/30min $80/60min | Traditional Sauna $50/20min $70/30min | Cold Plunge $50/10min | Red Light $30/10min $40/20min $50/30min | Fire & Ice $90/40min | Compression Therapy $30/15min $40/30min $65/60min | TMW Experience Day Pass $50 | Recovery Day Pass $110 | Ultimate Recovery $200
 REDIRECT TO CALL (203-304-1313): Couples services | Jenna Dallinga specifically | Memberships | Brow and Lash Bar | Lymphatic Drainage | Chemical Peels | Cosmetic services (brows/lashes)
