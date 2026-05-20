@@ -350,9 +350,10 @@ app.post('/sms/inbound', async (req, res) => {
     }
 
     const mayaReply = await getMayaResponse(clientPhone, incomingMessage);
-    console.log(`[MAYA REPLY] → "${mayaReply}"`);
+    const cleanReply = mayaReply.replace(/THERAPIST_REQUESTED/g, '').trim();
+    console.log(`[MAYA REPLY] → "${cleanReply}"`);
 
-    await sendGhlSms(clientPhone, mayaReply);
+    await sendGhlSms(clientPhone, cleanReply);
     console.log(`[SMS SENT] To: ${clientPhone}`);
 
     const history = conversations.get(clientPhone) || [];
@@ -370,7 +371,7 @@ app.post('/sms/inbound', async (req, res) => {
     }
 
     // Slack alert if booking link was just sent
-    if (mayaReply && (mayaReply.includes('api.gohighlevel.com') || mayaReply.toLowerCase().includes('booking link'))) {
+    if (cleanReply && (cleanReply.includes('api.gohighlevel.com') || cleanReply.toLowerCase().includes('booking link'))) {
       await alertSlack(`[Maya] :calendar: Booking link sent\nPhone: ${clientPhone}\nAdd-ons: ${addons.join(', ') || 'none'}`);
     }
 
