@@ -5,119 +5,137 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Session Preferences — Therapeutic Massage & Wellness</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Georgia, 'Times New Roman', serif; background: #FAF7F2; color: #1C1A17; min-height: 100vh; }
-  .header { background: #1C1A17; padding: 28px 24px; text-align: center; }
-  .header h1 { font-size: 22px; font-weight: normal; color: #FAF7F2; letter-spacing: 2px; text-transform: uppercase; }
-  .header p { font-size: 13px; color: #9a9080; margin-top: 6px; font-family: -apple-system, sans-serif; letter-spacing: 0.5px; }
-  .container { max-width: 640px; margin: 36px auto; padding: 0 20px 80px; }
-  .notice { background: #fff8ee; border-left: 3px solid #c9a96e; border-radius: 4px; padding: 16px 20px; margin-bottom: 28px; font-family: -apple-system, sans-serif; font-size: 13px; color: #6b5c3e; line-height: 1.6; }
-  .section { background: #fff; border-radius: 8px; padding: 28px; margin-bottom: 20px; border: 1px solid #ede9e3; }
-  .section h2 { font-size: 13px; font-weight: normal; letter-spacing: 2px; text-transform: uppercase; color: #9a9080; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #f0ece6; font-family: -apple-system, sans-serif; }
-  .field { margin-bottom: 18px; }
-  .field label { display: block; font-size: 13px; color: #555; margin-bottom: 10px; font-family: -apple-system, sans-serif; line-height: 1.5; }
-  .radio-group, .check-group { display: flex; gap: 10px; flex-wrap: wrap; }
-  .radio-group label, .check-group label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-family: -apple-system, sans-serif; color: #444; cursor: pointer; background: #faf7f2; border: 1px solid #ddd8d0; border-radius: 20px; padding: 7px 14px; transition: all 0.15s; }
-  .radio-group input, .check-group input { display: none; }
-  .radio-group label:has(input:checked), .check-group label:has(input:checked) { background: #1C1A17; color: #FAF7F2; border-color: #1C1A17; }
-  .submit-btn { width: 100%; background: #1C1A17; color: #FAF7F2; border: none; padding: 16px; font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase; font-family: -apple-system, sans-serif; border-radius: 6px; cursor: pointer; margin-top: 24px; transition: opacity 0.2s; }
-  .submit-btn:hover { opacity: 0.85; }
-  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .success { text-align: center; padding: 60px 20px; }
-  .success h2 { font-size: 24px; font-weight: normal; color: #1C1A17; margin-bottom: 12px; }
-  .success p { font-size: 14px; color: #888; font-family: -apple-system, sans-serif; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Georgia, 'Times New Roman', serif; background: #FAF7F2; color: #1C1A17; min-height: 100vh; }
+.header { background: #1C1A17; padding: 28px 24px; text-align: center; }
+.header h1 { font-size: 22px; font-weight: normal; color: #FAF7F2; letter-spacing: 2px; text-transform: uppercase; }
+.header p { font-size: 13px; color: #9a9080; margin-top: 6px; font-family: -apple-system, sans-serif; letter-spacing: 0.5px; }
+.container { max-width: 640px; margin: 36px auto; padding: 0 20px 80px; }
+.notice { background: #fff8ee; border-left: 3px solid #c9a96e; border-radius: 4px; padding: 16px 20px; margin-bottom: 28px; font-family: -apple-system, sans-serif; font-size: 13px; color: #6b5c3e; line-height: 1.6; }
+.section { background: #fff; border-radius: 8px; padding: 28px; margin-bottom: 20px; border: 1px solid #ede9e3; }
+.section h2 { font-size: 13px; font-weight: normal; letter-spacing: 2px; text-transform: uppercase; color: #9a9080; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #f0ece6; font-family: -apple-system, sans-serif; }
+.field { margin-bottom: 18px; }
+.field label { display: block; font-size: 13px; color: #555; margin-bottom: 10px; font-family: -apple-system, sans-serif; line-height: 1.5; }
+.radio-group, .check-group { display: flex; gap: 10px; flex-wrap: wrap; }
+.radio-group label, .check-group label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-family: -apple-system, sans-serif; color: #444; cursor: pointer; background: #faf7f2; border: 1px solid #ddd8d0; border-radius: 20px; padding: 7px 14px; transition: all 0.15s; }
+.radio-group input, .check-group input { display: none; }
+.radio-group label:has(input:checked), .check-group label:has(input:checked) { background: #1C1A17; color: #FAF7F2; border-color: #1C1A17; }
+.addon-group { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.addon-item { background: #faf7f2; border: 1px solid #ddd8d0; border-radius: 8px; padding: 12px 16px; cursor: pointer; transition: all 0.15s; }
+.addon-item:has(input:checked) { background: #1C1A17; border-color: #1C1A17; }
+.addon-item:has(input:checked) .addon-name { color: #FAF7F2; }
+.addon-item:has(input:checked) .addon-desc { color: #9a9080; }
+.addon-item input { display: none; }
+.addon-row { display: flex; align-items: center; gap: 8px; }
+.addon-name { font-size: 13px; font-weight: 600; font-family: -apple-system, sans-serif; color: #1C1A17; }
+.addon-price { font-size: 12px; color: #9a9080; font-family: -apple-system, sans-serif; margin-left: auto; }
+.addon-desc { font-size: 12px; color: #888; font-family: -apple-system, sans-serif; margin-top: 4px; padding-left: 0; line-height: 1.4; }
+.member-note { font-size: 12px; color: #9a9080; font-family: -apple-system, sans-serif; margin-top: 16px; padding: 10px 14px; background: #fff8ee; border-radius: 6px; border-left: 3px solid #c9a96e; line-height: 1.5; }
+.submit-btn { width: 100%; background: #1C1A17; color: #FAF7F2; border: none; padding: 16px; font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase; font-family: -apple-system, sans-serif; border-radius: 6px; cursor: pointer; margin-top: 24px; transition: opacity 0.2s; }
+.submit-btn:hover { opacity: 0.85; }
+.submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.success { text-align: center; padding: 60px 20px; }
+.success h2 { font-size: 24px; font-weight: normal; color: #1C1A17; margin-bottom: 12px; }
+.success p { font-size: 14px; color: #888; font-family: -apple-system, sans-serif; }
 </style>
 </head>
 <body>
 <div class="header">
-  <h1>Therapeutic Massage & Wellness</h1>
-  <p>Help us tailor your session</p>
+<h1>Therapeutic Massage & Wellness</h1>
+<p>Help us tailor your session</p>
 </div>
 <div class="container" id="formContainer">
-  <div class="notice">
-    We want your session to be exactly what you need. Take a moment to share your preferences — your therapist will review these before you arrive.
-  </div>
+<div class="notice">
+Your therapist reviews this before you arrive. Take a moment to personalize your session — it makes a real difference.
+</div>
 
-  <form id="prefsForm">
-    <div class="section">
-      <h2>Complimentary Standards</h2>
-      <div class="field">
-        <label>All sessions come with complimentary standards — choose from the following:</label>
-        <div class="check-group">
-          <label><input type="checkbox" name="standards" value="I Would Like All Standards"><span>I Would Like All Standards</span></label>
-          <label><input type="checkbox" name="standards" value="Low Table Heat"><span>Low Table Heat</span></label>
-          <label><input type="checkbox" name="standards" value="Warm Neck Bolster"><span>Warm Neck Bolster</span></label>
-          <label><input type="checkbox" name="standards" value="Hot Towels For Feet"><span>Hot Towels For Feet</span></label>
-          <label><input type="checkbox" name="standards" value="Hot Towels For Back"><span>Hot Towels For Back</span></label>
-          <label><input type="checkbox" name="standards" value="Warm Eye Mask"><span>Warm Eye Mask</span></label>
-          <label><input type="checkbox" name="standards" value="Sinus Opener (Peppermint)"><span>Sinus Opener (Peppermint)</span></label>
-          <label><input type="checkbox" name="standards" value="None Of The Above"><span>None Of The Above</span></label>
-        </div>
-      </div>
-    </div>
+<form id="prefsForm">
 
-    <div class="section">
-      <h2>During Your Session</h2>
-      <div class="field">
-        <label>Do you enjoy conversation during your massage?</label>
-        <div class="radio-group">
-          <label><input type="radio" name="conversation" value="Yes — I enjoy light conversation"><span>Yes, I enjoy conversation</span></label>
-          <label><input type="radio" name="conversation" value="No — I prefer quiet"><span>No, I prefer quiet</span></label>
-          <label><input type="radio" name="conversation" value="Either is fine"><span>Either is fine</span></label>
-        </div>
-      </div>
-    </div>
+<div class="section">
+<h2>Complimentary Standards</h2>
+<div class="field">
+<label>All sessions come with complimentary standards — choose from the following:</label>
+<div class="check-group">
+<label><input type="checkbox" name="standards" value="I Would Like All Standards"><span>I Would Like All Standards</span></label>
+<label><input type="checkbox" name="standards" value="Low Table Heat"><span>Low Table Heat</span></label>
+<label><input type="checkbox" name="standards" value="Warm Neck Bolster"><span>Warm Neck Bolster</span></label>
+<label><input type="checkbox" name="standards" value="Hot Towels For Feet"><span>Hot Towels For Feet</span></label>
+<label><input type="checkbox" name="standards" value="Hot Towels For Back"><span>Hot Towels For Back</span></label>
+<label><input type="checkbox" name="standards" value="Warm Eye Mask"><span>Warm Eye Mask</span></label>
+<label><input type="checkbox" name="standards" value="Sinus Opener (Peppermint)"><span>Sinus Opener (Peppermint)</span></label>
+<label><input type="checkbox" name="standards" value="None Of The Above"><span>None Of The Above</span></label>
+</div>
+</div>
+</div>
 
-    <div class="section">
-      <h2>Recovery Experience</h2>
-      <div class="field">
-        <label>Would you like to add a recovery experience before or after your massage? Select any that interest you:</label>
-        <div class="pill-group" style="margin-top: 12px; flex-direction: column; gap: 10px;">
-          <label style="border-radius: 8px; padding: 12px 16px; flex-direction: column; align-items: flex-start; gap: 2px;">
-            <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="recovery" value="Float Therapy"><span style="font-weight:600;">Float Therapy — from $95/60min</span></div>
-            <span style="font-size:12px; color:#888; padding-left:22px;">Sensory deprivation in warm salt water — deeply relaxing and meditative.</span>
-          </label>
-          <label style="border-radius: 8px; padding: 12px 16px; flex-direction: column; align-items: flex-start; gap: 2px;">
-            <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="recovery" value="Infrared Sauna"><span style="font-weight:600;">Infrared Sauna — from $40/20min</span></div>
-            <span style="font-size:12px; color:#888; padding-left:22px;">Penetrating heat that flushes toxins, eases muscle tension, and boosts circulation.</span>
-          </label>
-          <label style="border-radius: 8px; padding: 12px 16px; flex-direction: column; align-items: flex-start; gap: 2px;">
-            <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="recovery" value="Traditional Sauna"><span style="font-weight:600;">Traditional Sauna — from $50/20min</span></div>
-            <span style="font-size:12px; color:#888; padding-left:22px;">Classic dry heat — relaxes muscles and promotes deep detoxification.</span>
-          </label>
-          <label style="border-radius: 8px; padding: 12px 16px; flex-direction: column; align-items: flex-start; gap: 2px;">
-            <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="recovery" value="Cold Plunge"><span style="font-weight:600;">Cold Plunge — $50/10min</span></div>
-            <span style="font-size:12px; color:#888; padding-left:22px;">Cold water immersion that reduces inflammation and wakes up the whole body.</span>
-          </label>
-          <label style="border-radius: 8px; padding: 12px 16px; flex-direction: column; align-items: flex-start; gap: 2px;">
-            <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="recovery" value="Fire & Ice"><span style="font-weight:600;">Fire & Ice — $90/40min</span></div>
-            <span style="font-size:12px; color:#888; padding-left:22px;">Sauna + cold plunge combined — the contrast supercharges recovery and energy.</span>
-          </label>
-          <label style="border-radius: 8px; padding: 12px 16px; flex-direction: column; align-items: flex-start; gap: 2px;">
-            <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="recovery" value="Red Light Therapy"><span style="font-weight:600;">Red Light Therapy — from $30/10min</span></div>
-            <span style="font-size:12px; color:#888; padding-left:22px;">Low-level light that supports tissue repair, reduces soreness, and boosts collagen.</span>
-          </label>
-          <label style="border-radius: 8px; padding: 12px 16px; flex-direction: column; align-items: flex-start; gap: 2px;">
-            <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="recovery" value="Compression Therapy"><span style="font-weight:600;">Compression Therapy — from $30/15min</span></div>
-            <span style="font-size:12px; color:#888; padding-left:22px;">Pneumatic compression for legs — improves circulation and accelerates muscle recovery.</span>
-          </label>
-          <label style="border-radius: 8px; padding: 12px 16px; flex-direction: column; align-items: flex-start; gap: 2px;">
-            <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="recovery" value="TMW Experience Day Pass"><span style="font-weight:600;">TMW Experience Day Pass — $50/single</span></div>
-            <span style="font-size:12px; color:#888; padding-left:22px;">Full access to all recovery amenities for the day — sauna, cold plunge, red light, and more.</span>
-          </label>
-          <label style="border-radius: 8px; padding: 12px 16px; flex-direction: column; align-items: flex-start; gap: 2px;">
-            <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="recovery" value="Recovery Day Pass"><span style="font-weight:600;">Recovery Day Pass — $110/single</span></div>
-            <span style="font-size:12px; color:#888; padding-left:22px;">Includes massage + full day recovery access — the ultimate reset experience.</span>
-          </label>
-          <label style="border-radius: 8px; padding: 12px 16px; flex-direction: column; align-items: flex-start; gap: 2px;">
-            <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="recovery" value="No thank you"><span style="font-weight:600;">No thank you</span></div>
-          </label>
-        </div>
-      </div>
-    </div>
+<div class="section">
+<h2>During Your Session</h2>
+<div class="field">
+<label>Do you enjoy conversation during your massage?</label>
+<div class="radio-group">
+<label><input type="radio" name="conversation" value="Yes — I enjoy light conversation"><span>Yes, I enjoy conversation</span></label>
+<label><input type="radio" name="conversation" value="No — I prefer quiet"><span>No, I prefer quiet</span></label>
+<label><input type="radio" name="conversation" value="Either is fine"><span>Either is fine</span></label>
+</div>
+</div>
+</div>
 
-    <button type="submit" class="submit-btn" id="submitBtn">Submit Preferences</button>
-  </form>
+<div class="section">
+<h2>Session Add-Ons</h2>
+<div class="field">
+<label>Members receive one complimentary add-on. Non-members may add any of the following:</label>
+<div class="addon-group">
+<label class="addon-item">
+<input type="checkbox" name="addons" value="Lavender CBD ($18)">
+<div class="addon-row"><span class="addon-name">Lavender CBD</span><span class="addon-price">$18</span></div>
+<div class="addon-desc">Soothing lavender-infused CBD oil — promotes deep relaxation and eases tension.</div>
+</label>
+<label class="addon-item">
+<input type="checkbox" name="addons" value="Eucalyptus CBD ($18)">
+<div class="addon-row"><span class="addon-name">Eucalyptus CBD</span><span class="addon-price">$18</span></div>
+<div class="addon-desc">Refreshing eucalyptus CBD oil — opens airways and supports muscle recovery.</div>
+</label>
+<label class="addon-item">
+<input type="checkbox" name="addons" value="Unscented CBD ($18)">
+<div class="addon-row"><span class="addon-name">Unscented CBD</span><span class="addon-price">$18</span></div>
+<div class="addon-desc">Pure CBD without fragrance — ideal for sensitive skin or scent preferences.</div>
+</label>
+<label class="addon-item">
+<input type="checkbox" name="addons" value="Doterra Scalp Massage ($10)">
+<div class="addon-row"><span class="addon-name">Doterra Scalp Massage</span><span class="addon-price">$10</span></div>
+<div class="addon-desc">Targeted scalp work with doTERRA essential oils — relieves tension headaches and stress.</div>
+</label>
+<label class="addon-item">
+<input type="checkbox" name="addons" value="Hot Stone Spot Work ($20)">
+<div class="addon-row"><span class="addon-name">Hot Stone Spot Work</span><span class="addon-price">$20</span></div>
+<div class="addon-desc">Heated stones on specific tension areas — melts knots and deepens the massage.</div>
+</label>
+<label class="addon-item">
+<input type="checkbox" name="addons" value="Cupping ($20)">
+<div class="addon-row"><span class="addon-name">Cupping</span><span class="addon-price">$20</span></div>
+<div class="addon-desc">Suction therapy that lifts tissue, increases circulation, and releases deep muscle adhesions.</div>
+</label>
+<label class="addon-item">
+<input type="checkbox" name="addons" value="Lavender Gommage Foot Treatment ($15)">
+<div class="addon-row"><span class="addon-name">Lavender Gommage Foot Treatment</span><span class="addon-price">$15</span></div>
+<div class="addon-desc">Exfoliating lavender treatment that softens and refreshes tired feet.</div>
+</label>
+<label class="addon-item">
+<input type="checkbox" name="addons" value="Keratin Foot Treatment ($25)">
+<div class="addon-row"><span class="addon-name">Keratin Foot Treatment</span><span class="addon-price">$25</span></div>
+<div class="addon-desc">Intensive keratin treatment that repairs cracked heels and deeply nourishes skin.</div>
+</label>
+<label class="addon-item">
+<input type="checkbox" name="addons" value="No Thank You">
+<div class="addon-row"><span class="addon-name">No thank you</span></div>
+</label>
+</div>
+<div class="member-note">Not a member yet? Ask us about membership — complimentary add-ons, discounted services, and recovery access with every visit.</div>
+</div>
+</div>
+
+<button type="submit" class="submit-btn" id="submitBtn">Submit Preferences</button>
+</form>
 </div>
 
 <script>
@@ -127,35 +145,35 @@ const phone = params.get('phone') || '';
 const firstName = params.get('firstName') || '';
 
 document.getElementById('prefsForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const btn = document.getElementById('submitBtn');
-  btn.disabled = true;
-  btn.textContent = 'Submitting...';
+e.preventDefault();
+const btn = document.getElementById('submitBtn');
+btn.disabled = true;
+btn.textContent = 'Submitting...';
 
-  const data = { contactId, phone, firstName };
-  new FormData(e.target).forEach((val, key) => {
-    if (data[key]) { data[key] = data[key] + ', ' + val; }
-    else { data[key] = val; }
-  });
+const data = { contactId, phone, firstName };
+new FormData(e.target).forEach((val, key) => {
+if (data[key]) { data[key] = data[key] + ', ' + val; }
+else { data[key] = val; }
+});
 
-  try {
-    const res = await fetch('/preferences/submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    if (res.ok) {
-      document.getElementById('formContainer').innerHTML = `
-        <div class="success">
-          <h2>Thank you${firstName ? ', ' + firstName : ''}.</h2>
-          <p>Your preferences have been saved. We look forward to your visit.</p>
-        </div>`;
-    } else { throw new Error(); }
-  } catch {
-    btn.disabled = false;
-    btn.textContent = 'Submit Preferences';
-    alert('Something went wrong. Please call us at 203-304-1313.');
-  }
+try {
+const res = await fetch('/preferences/submit', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify(data)
+});
+if (res.ok) {
+document.getElementById('formContainer').innerHTML = `
+<div class="success">
+<h2>Thank you${firstName ? ', ' + firstName : ''}.</h2>
+<p>Your preferences have been saved. We look forward to your visit.</p>
+</div>`;
+} else { throw new Error(); }
+} catch {
+btn.disabled = false;
+btn.textContent = 'Submit Preferences';
+alert('Something went wrong. Please call us at 203-304-1313.');
+}
 });
 </script>
 </body>
