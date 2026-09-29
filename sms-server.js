@@ -6,7 +6,11 @@
 // GHL Workflow → POST /sms/inbound (this server)
 // → GPT-4.1 processes with full TMW knowledge base
 // → GHL API sends SMS reply to client
-// → Cancellations also fire SMS alert to Carolyn
+// → Booking requests + cancellations fire Slack + SMS alerts to Carolyn
+//
+// BOOKING MODE (Sep 2026): Boulevard is still the live calendar.
+// Maya does NOT send booking links. She collects the request and hands it
+// to Carolyn, who books it in Boulevard and confirms with the client.
 //
 // Run: node sms-server.js
 // ============================================================================
@@ -22,14 +26,17 @@ app.use(express.static(path.join(__dirname, 'public')));
 // CONFIG
 // ----------------------------------------------------------------------------
 const CONFIG = {
-  openAiApiKey: process.env.OPENAI_API_KEY || 'YOUR_OPENAI_API_KEY',
-  ghlBearerToken: process.env.GHL_BEARER_TOKEN || 'pit-fb285c5d-a16c-45be-adce-f35d0722bd52',
-  ghlLocationId: process.env.GHL_LOCATION_ID || 'i354kGTSmTlt3zeEVsCG',
-  ghlFromNumber: process.env.GHL_FROM_NUMBER || '+18605904699',
-  carolynCell: '+18456121174',
-  businessName: 'Therapeutic Massage & Wellness',
-  agentName: 'Maya',
-  mainPhone: '203-304-1313',
+openAiApiKey: process.env.OPENAI_API_KEY || 'YOUR_OPENAI_API_KEY',
+ghlBearerToken: process.env.GHL_BEARER_TOKEN || 'pit-fb285c5d-a16c-45be-adce-f35d0722bd52',
+ghlLocationId: process.env.GHL_LOCATION_ID || 'i354kGTSmTlt3zeEVsCG',
+ghlFromNumber: process.env.GHL_FROM_NUMBER || '+18605904699',
+carolynCell: '+18456121174',
+businessName: 'Therapeutic Massage & Wellness',
+agentName: 'Maya',
+mainPhone: '203-304-1313',
+// Branded link domain. Set LINKS_BASE_URL in Railway (e.g. https://links.tmwmassage.net)
+// and every client-facing link switches over. No code change needed.
+linksBaseUrl: (process.env.LINKS_BASE_URL || 'https://sova-deploy-production.up.railway.app').replace(/\/$/, ''),
 };
 
 // ----------------------------------------------------------------------------
@@ -38,14 +45,14 @@ const CONFIG = {
 const conversations = new Map();
 
 function getHistory(phone) {
-  if (!conversations.has(phone)) conversations.set(phone, []);
-  return conversations.get(phone);
+if (!conversations.has(phone)) conversations.set(phone, []);
+return conversations.get(phone);
 }
 
 function addToHistory(phone, role, content) {
-  const history = getHistory(phone);
-  history.push({ role, content });
-  if (history.length > 20) history.splice(0, history.length - 20);
+const history = getHistory(phone);
+history.push({ role, content });
+if (history.length > 20) history.splice(0, history.length - 20);
 }
 
 // ----------------------------------------------------------------------------
@@ -80,30 +87,24 @@ STEP 2 — Recommend with soft alternative, then ask which they prefer:
 STEP 3 — Ask about therapist preference. One message, one question:
 "Do you have a preferred therapist, or is anyone available fine?"
 - If NO preference → move to Step 4 (add-on upsell).
-- If YES preference → send TWO messages:
-  Message 1: "I'll have someone from the team follow up to get you booked with them. In the meantime, here's a link to grab any available time now."
-  Message 2: Send ONLY the booking link URL.
-  Then flag for team follow-up in your reply by including the text THERAPIST_REQUESTED so the system can alert the team. Do not say this to the client.
+- If YES preference → acknowledge the therapist by name in one short sentence, then move to Step 4. Include the text THERAPIST_REQUESTED in your reply so the system can alert the team. Do not say this to the client.
 
-STEP 4 — ONE massage add-on upsell, benefit-first. Only offer ONCE. If they decline, go straight to booking link — no more upsells:
+STEP 4 — ONE massage add-on upsell, benefit-first. Only offer ONCE. If they decline, go straight to Step 5 — no more upsells:
 - Pain/tension → "Hot stones can be really supportive in the therapist getting deeper without extra pressure. Would you like to add that for just an extra $20?"
 - Relaxation → "Aromatherapy can really deepen the relaxation experience. Would you like to add that for just an extra $15?"
-- If YES to add-on → go straight to booking link. No more upsells.
-- If NO to add-on → go straight to booking link.
+- Facials → skip this step and go straight to Step 5.
+- If YES or NO → go to Step 5.
 
-STEP 5 — Send booking link as TWO separate messages:
-Message 1 (warm and composed — no exclamation points, no filler):
-- After YES to any add-on → "We can't wait to take care of you. Grab your time here:"
-- After NO to add-on → "We can't wait to take care of you. Grab your time here:"
-Message 2: Send ONLY the booking link URL — no other text, no punctuation after it.
+STEP 5 — Ask for their preferred day and time. One message:
+"What day and time works best for you? A general window is perfect."
+
+STEP 6 — Once they give a day/time, close warmly. One message, then stop:
+"Perfect. I'll pass this to our front desk and they'll text you shortly to confirm your appointment."
+Include the text BOOKING_REQUEST at the end of this reply so the system can alert the team. Do not say this to the client.
+
+IMPORTANT: You cannot see the schedule and you cannot book appointments. Never promise a specific time is available. Never send any links. Never say the appointment is booked or confirmed — the front desk confirms it.
 
 TONE RULE: No exclamation points anywhere in Maya responses. Warm and composed, not bubbly.
-
-BOOKING LINKS:
-- 25 min: https://api.gohighlevel.com/widget/booking/uBLikuiy9gCI2MDItdz5
-- 55 min: https://api.gohighlevel.com/widget/booking/HFlTUh76tUn01FHsf9Hi
-- 85 min: https://api.gohighlevel.com/widget/booking/GDhkZy8h9CtjAOPPKlgR
-- 110 min: https://api.gohighlevel.com/widget/booking/tFKqGwFxE5Ka5626we5X
 
 IF THEY HAVE A QUESTION (not booking):
 Answer using the business info and pricing below, then naturally invite them to book.
@@ -117,457 +118,497 @@ REDIRECT TO CALL (203-304-1313): Couples services | Jenna Dallinga specifically 
 CANCELLATION
 24hr notice required. No-show = 100% charge. Handle cancellations warmly, note it for Carolyn, immediately offer to rebook.
 
-NEVER: Mention Boulevard | Send more than one question per message | Push upsell more than once | Write more than 2-3 sentences`;
+NEVER: Mention Boulevard | Send links | Say an appointment is booked or confirmed | Send more than one question per message | Push upsell more than once | Write more than 2-3 sentences`;
 
 // ----------------------------------------------------------------------------
 // FLOW STATE DETECTOR
 // ----------------------------------------------------------------------------
 function detectFlowState(history) {
-  const lastAssistant = [...history].reverse().find(m => m.role === 'assistant')?.content?.toLowerCase() || '';
-  if (lastAssistant.includes('brings you in')) return 'STEP1_COMPLETE — waiting for client to say why they are coming in';
-  if (lastAssistant.includes('which sounds best') || lastAssistant.includes('which works better') || lastAssistant.includes('which sounds more')) return 'STEP2_COMPLETE — waiting for client to choose their service/duration';
-  if (lastAssistant.includes('preferred therapist') || lastAssistant.includes('anyone available fine')) return 'STEP3_COMPLETE — waiting for therapist preference. If no preference, move to add-on upsell. If yes preference, send booking link and include THERAPIST_REQUESTED in reply.';
-  if (lastAssistant.includes('hot stones') && !lastAssistant.includes('infrared')) return 'ADDON_OFFERED — waiting for yes or no to hot stones upsell. If yes or no, send booking link immediately.';
-  if (lastAssistant.includes('aromatherapy') && !lastAssistant.includes('infrared')) return 'ADDON_OFFERED — waiting for yes or no to aromatherapy upsell. If yes or no, send booking link immediately.';
-  if (lastAssistant.includes('booking link') || lastAssistant.includes('api.gohighlevel.com')) return 'BOOKING_LINK_SENT — conversation complete. If client replies, answer any questions about their booking.';
-  return 'START — conversation just beginning';
+const lastAssistant = [...history].reverse().find(m => m.role === 'assistant')?.content?.toLowerCase() || '';
+if (lastAssistant.includes('pass this to our front desk')) return 'REQUEST_SENT — conversation complete. If client replies, answer briefly and let them know the front desk will text to confirm. Do not restart the flow.';
+if (lastAssistant.includes('what day and time works')) return 'STEP5_COMPLETE — waiting for preferred day/time. When they give one, send the Step 6 closing message with BOOKING_REQUEST.';
+if (lastAssistant.includes('brings you in')) return 'STEP1_COMPLETE — waiting for client to say why they are coming in';
+if (lastAssistant.includes('which sounds best') || lastAssistant.includes('which works better') || lastAssistant.includes('which sounds more')) return 'STEP2_COMPLETE — waiting for client to choose their service/duration';
+if (lastAssistant.includes('preferred therapist') || lastAssistant.includes('anyone available fine')) return 'STEP3_COMPLETE — waiting for therapist preference. Then move to the add-on upsell (or Step 5 for facials).';
+if (lastAssistant.includes('hot stones')) return 'ADDON_OFFERED — waiting for yes or no to hot stones. Either way, move to Step 5 (ask preferred day/time).';
+if (lastAssistant.includes('aromatherapy')) return 'ADDON_OFFERED — waiting for yes or no to aromatherapy. Either way, move to Step 5 (ask preferred day/time).';
+return 'START — conversation just beginning';
 }
 
 // ----------------------------------------------------------------------------
 // GPT-4.1 CALL
 // ----------------------------------------------------------------------------
 async function getMayaResponse(clientPhone, incomingMessage) {
-  addToHistory(clientPhone, 'user', incomingMessage);
-  const history = getHistory(clientPhone);
+addToHistory(clientPhone, 'user', incomingMessage);
+const history = getHistory(clientPhone);
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${CONFIG.openAiApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4.1',
-      max_tokens: 300,
-      messages: [
-        {
-          role: 'system',
-          content: MAYA_SYSTEM_PROMPT + '\n\nCURRENT FLOW STATE: ' + detectFlowState(history) + '\nYou MUST act according to this state. Do not restart the flow. Do not re-ask questions already answered.'
-        },
-        ...history,
-      ],
-    }),
-  });
+const response = await fetch('https://api.openai.com/v1/chat/completions', {
+method: 'POST',
+headers: {
+Authorization: `Bearer ${CONFIG.openAiApiKey}`,
+'Content-Type': 'application/json',
+},
+body: JSON.stringify({
+model: 'gpt-4.1',
+max_tokens: 300,
+messages: [
+{
+role: 'system',
+content: MAYA_SYSTEM_PROMPT + '\n\nCURRENT FLOW STATE: ' + detectFlowState(history) + '\nYou MUST act according to this state. Do not restart the flow. Do not re-ask questions already answered.'
+},
+...history,
+],
+}),
+});
 
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`OpenAI error: ${response.status} — ${err}`);
-  }
+if (!response.ok) {
+const err = await response.text();
+throw new Error(`OpenAI error: ${response.status} — ${err}`);
+}
 
-  const data = await response.json();
-  const reply = data.choices[0].message.content.trim();
-  addToHistory(clientPhone, 'assistant', reply);
-  return reply;
+const data = await response.json();
+const reply = data.choices[0].message.content.trim();
+addToHistory(clientPhone, 'assistant', reply);
+return reply;
 }
 
 // ----------------------------------------------------------------------------
 // CANCELLATION DETECTOR
 // ----------------------------------------------------------------------------
 function isCancellation(message) {
-  const lower = message.toLowerCase();
-  const triggers = [
-    'cancel', 'cancellation', 'need to cancel', 'want to cancel',
-    "can't make it", 'cannot make it', "won't be able", 'reschedule',
-    'need to reschedule', 'move my appointment', 'change my appointment',
-  ];
-  return triggers.some(t => lower.includes(t));
+const lower = message.toLowerCase();
+const triggers = [
+'cancel', 'cancellation', 'need to cancel', 'want to cancel',
+"can't make it", 'cannot make it', "won't be able", 'reschedule',
+'need to reschedule', 'move my appointment', 'change my appointment',
+];
+return triggers.some(t => lower.includes(t));
 }
 
 // ----------------------------------------------------------------------------
 // SLACK ALERT
 // ----------------------------------------------------------------------------
 async function alertSlack(message) {
-  const webhookUrl = process.env.SLACK_WEBHOOK_URL;
-  if (!webhookUrl) return;
-  try {
-    await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: message }),
-    });
-  } catch (err) {
-    console.error('[SLACK ALERT] Failed:', err.message);
-  }
+const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+if (!webhookUrl) return;
+try {
+await fetch(webhookUrl, {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ text: message }),
+});
+} catch (err) {
+console.error('[SLACK ALERT] Failed:', err.message);
+}
 }
 
 // ----------------------------------------------------------------------------
 // GHL: SEND SMS
 // ----------------------------------------------------------------------------
 async function sendGhlSms(toPhone, message) {
-  const d = toPhone.replace(/\D/g, '');
-  toPhone = '+' + (d.length === 10 ? '1' + d : d);
+const d = toPhone.replace(/\D/g, '');
+toPhone = '+' + (d.length === 10 ? '1' + d : d);
 
-  const contactRes = await fetch(
-    `https://services.leadconnectorhq.com/contacts/?locationId=${CONFIG.ghlLocationId}&query=${encodeURIComponent(toPhone)}`,
-    {
-      headers: {
-        Authorization: `Bearer ${CONFIG.ghlBearerToken}`,
-        Version: '2021-04-15',
-      },
-    }
-  );
+const contactRes = await fetch(
+`https://services.leadconnectorhq.com/contacts/?locationId=${CONFIG.ghlLocationId}&query=${encodeURIComponent(toPhone)}`,
+{
+headers: {
+Authorization: `Bearer ${CONFIG.ghlBearerToken}`,
+Version: '2021-04-15',
+},
+}
+);
 
-  let contactId = null;
-  if (contactRes.ok) {
-    const contactData = await contactRes.json();
-    contactId = contactData?.contacts?.[0]?.id || null;
-  }
+let contactId = null;
+if (contactRes.ok) {
+const contactData = await contactRes.json();
+contactId = contactData?.contacts?.[0]?.id || null;
+}
 
-  const payload = {
-    type: 'SMS',
-    message,
-    fromNumber: CONFIG.ghlFromNumber,
-    toNumber: toPhone,
-    locationId: CONFIG.ghlLocationId,
-  };
+const payload = {
+type: 'SMS',
+message,
+fromNumber: CONFIG.ghlFromNumber,
+toNumber: toPhone,
+locationId: CONFIG.ghlLocationId,
+};
 
-  if (contactId) payload.contactId = contactId;
+if (contactId) payload.contactId = contactId;
 
-  const smsRes = await fetch('https://services.leadconnectorhq.com/conversations/messages', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${CONFIG.ghlBearerToken}`,
-      'Content-Type': 'application/json',
-      Version: '2021-04-15',
-    },
-    body: JSON.stringify(payload),
-  });
+const smsRes = await fetch('https://services.leadconnectorhq.com/conversations/messages', {
+method: 'POST',
+headers: {
+Authorization: `Bearer ${CONFIG.ghlBearerToken}`,
+'Content-Type': 'application/json',
+Version: '2021-04-15',
+},
+body: JSON.stringify(payload),
+});
 
-  if (!smsRes.ok) {
-    const errText = await smsRes.text();
-    throw new Error(`GHL SMS send failed: ${smsRes.status} — ${errText}`);
-  }
+if (!smsRes.ok) {
+const errText = await smsRes.text();
+throw new Error(`GHL SMS send failed: ${smsRes.status} — ${errText}`);
+}
 
-  return await smsRes.json();
+return await smsRes.json();
 }
 
 // ----------------------------------------------------------------------------
-// ALERT CAROLYN
+// ALERT CAROLYN — CANCELLATION
 // ----------------------------------------------------------------------------
 async function alertCarolyn(clientPhone, clientMessage) {
-  const alertMessage =
-    `Maya Alert: Client (${clientPhone}) cancelled via text.\n` +
-    `Their message: "${clientMessage}"\n` +
-    `Please cancel in GHL and free the slot.`;
-  try {
-    await sendGhlSms(CONFIG.carolynCell, alertMessage);
-    console.log(`[CAROLYN ALERT] Sent to ${CONFIG.carolynCell}`);
-  } catch (err) {
-    console.error(`[CAROLYN ALERT] Failed to send: ${err.message}`);
-  }
+const alertMessage =
+`Maya Alert: Client (${clientPhone}) cancelled via text.\n` +
+`Their message: "${clientMessage}"\n` +
+`Please cancel in Boulevard and free the slot.`;
+try {
+await sendGhlSms(CONFIG.carolynCell, alertMessage);
+console.log(`[CAROLYN ALERT] Sent to ${CONFIG.carolynCell}`);
+} catch (err) {
+console.error(`[CAROLYN ALERT] Failed to send: ${err.message}`);
+}
+}
+
+// ----------------------------------------------------------------------------
+// ALERT CAROLYN — BOOKING REQUEST (hand-off to front desk)
+// ----------------------------------------------------------------------------
+function buildRequestSummary(clientPhone) {
+const history = conversations.get(clientPhone) || [];
+// Client's own words, in order — gives the front desk the full request at a glance
+const clientLines = history.filter(m => m.role === 'user').map(m => `- ${m.content}`);
+return clientLines.slice(-8).join('\n');
+}
+
+async function alertBookingRequest(clientPhone, addons, therapistRequested) {
+const summary = buildRequestSummary(clientPhone);
+const addonText = addons.length ? addons.join(', ') : 'none';
+const therapistText = therapistRequested ? 'YES — see their messages' : 'no preference';
+
+const smsText =
+`Maya Booking Request: ${clientPhone}\n` +
+`Add-ons: ${addonText} | Therapist: ${therapistText}\n` +
+`What they said:\n${summary}\n` +
+`Please book in Boulevard and text them to confirm.`;
+
+try {
+await sendGhlSms(CONFIG.carolynCell, smsText);
+} catch (err) {
+console.error('[BOOKING REQUEST] Carolyn SMS failed:', err.message);
+}
+
+await alertSlack(
+`[Maya] :calendar: Booking request — needs to be booked in Boulevard\n` +
+`Phone: ${clientPhone}\nAdd-ons: ${addonText}\nTherapist: ${therapistText}\n` +
+`What they said:\n${summary}`
+);
 }
 
 // ----------------------------------------------------------------------------
 // DETECT ADD-ONS
 // ----------------------------------------------------------------------------
 function detectAddOns(conversationHistory) {
-  const addons = [];
-  const messages = conversationHistory;
-  for (let i = 0; i < messages.length; i++) {
-    const msg = messages[i];
-    if (msg.role === 'assistant') {
-      const isHotStones = msg.content.toLowerCase().includes('hot stones');
-      const isAromatherapy = msg.content.toLowerCase().includes('aromatherapy');
-      const isSauna = msg.content.toLowerCase().includes('infrared sauna');
-      const nextUser = messages[i + 1];
-      if (nextUser && nextUser.role === 'user') {
-        const said = nextUser.content.toLowerCase();
-        const saidYes = said.includes('yes') || said.includes('sure') || said.includes('ok') || said.includes('great') || said.includes('love') || said.includes('add') || said.includes('sounds good') || said.includes('that sounds');
-        if (saidYes && isHotStones) addons.push('Hot Stones +$20');
-        if (saidYes && isAromatherapy) addons.push('Aromatherapy +$15');
-        if (saidYes && isSauna) addons.push('Infrared Sauna 30min +$50');
-      }
-    }
-  }
-  return addons;
+const addons = [];
+const messages = conversationHistory;
+for (let i = 0; i < messages.length; i++) {
+const msg = messages[i];
+if (msg.role === 'assistant') {
+const isHotStones = msg.content.toLowerCase().includes('hot stones');
+const isAromatherapy = msg.content.toLowerCase().includes('aromatherapy');
+const nextUser = messages[i + 1];
+if (nextUser && nextUser.role === 'user') {
+const said = nextUser.content.toLowerCase();
+const saidYes = said.includes('yes') || said.includes('sure') || said.includes('ok') || said.includes('great') || said.includes('love') || said.includes('add') || said.includes('sounds good') || said.includes('that sounds');
+if (saidYes && isHotStones) addons.push('Hot Stones +$20');
+if (saidYes && isAromatherapy) addons.push('Aromatherapy +$15');
+}
+}
+}
+return addons;
 }
 
 async function writeAddOnsToContact(contactId, addons) {
-  if (!contactId || addons.length === 0) return;
-  try {
-    await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${CONFIG.ghlBearerToken}`,
-        'Content-Type': 'application/json',
-        Version: '2021-07-28',
-      },
-      body: JSON.stringify({
-        customFields: [{ id: '8EOok3x105CyQIIJyMtx', value: addons.join(', ') }],
-      }),
-    });
-    console.log('[ADD-ONS] Written to contact:', addons.join(', '));
-  } catch (err) {
-    console.error('[ADD-ONS] Failed to write:', err.message);
-  }
+if (!contactId || addons.length === 0) return;
+try {
+await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
+method: 'PUT',
+headers: {
+Authorization: `Bearer ${CONFIG.ghlBearerToken}`,
+'Content-Type': 'application/json',
+Version: '2021-07-28',
+},
+body: JSON.stringify({
+customFields: [{ id: '8EOok3x105CyQIIJyMtx', value: addons.join(', ') }],
+}),
+});
+console.log('[ADD-ONS] Written to contact:', addons.join(', '));
+} catch (err) {
+console.error('[ADD-ONS] Failed to write:', err.message);
 }
+}
+
+// Tracks whether a client asked for a specific therapist during this conversation
+const therapistRequestedBy = new Set();
 
 // ----------------------------------------------------------------------------
 // MAIN WEBHOOK ENDPOINT
 // ----------------------------------------------------------------------------
 app.post('/sms/inbound', async (req, res) => {
-  res.status(200).json({ received: true });
+res.status(200).json({ received: true });
 
-  try {
-    const body = req.body;
-    console.log('\n[INBOUND SMS]', JSON.stringify(body, null, 2));
+try {
+const body = req.body;
+console.log('\n[INBOUND SMS]', JSON.stringify(body, null, 2));
 
-    const clientPhone =
-      body.phone ||
-      body.contact?.phone ||
-      body.fromPhone ||
-      body.from ||
-      null;
+const clientPhone =
+body.phone ||
+body.contact?.phone ||
+body.fromPhone ||
+body.from ||
+null;
 
-    const incomingMessage =
-      body.message ||
-      body.messageBody ||
-      body.smsBody ||
-      body.body ||
-      null;
+const incomingMessage =
+body.message ||
+body.messageBody ||
+body.smsBody ||
+body.body ||
+null;
 
-    if (!clientPhone || !incomingMessage) {
-      console.warn('[INBOUND SMS] Could not extract phone or message from payload:', body);
-      return;
-    }
+if (!clientPhone || !incomingMessage) {
+console.warn('[INBOUND SMS] Could not extract phone or message from payload:', body);
+return;
+}
 
-    console.log(`[INBOUND SMS] From: ${clientPhone} | Message: "${incomingMessage}"`);
+console.log(`[INBOUND SMS] From: ${clientPhone} | Message: "${incomingMessage}"`);
 
-    if (isCancellation(incomingMessage)) {
-      console.log('[CANCELLATION DETECTED] Alerting Carolyn...');
-      await alertCarolyn(clientPhone, incomingMessage);
-      await alertSlack(`[Maya] :warning: Cancellation\nFrom: ${clientPhone}\nMsg: "${incomingMessage}"`);
-    }
+if (isCancellation(incomingMessage)) {
+console.log('[CANCELLATION DETECTED] Alerting Carolyn...');
+await alertCarolyn(clientPhone, incomingMessage);
+await alertSlack(`[Maya] :warning: Cancellation\nFrom: ${clientPhone}\nMsg: "${incomingMessage}"`);
+}
 
-    // Recovery upsell YES intercept — short-circuits Maya for this reply only
-    if (isRecoveryYes(clientPhone, incomingMessage)) {
-      console.log('[RECOVERY YES] Client opted in — alerting Carolyn via Slack');
-      await alertSlack(`[Maya] :muscle: Recovery Upsell — YES\nPhone: ${clientPhone}\nAction needed: Check availability and text client to confirm recovery service + time.`);
-      await sendGhlSms(clientPhone, `Great — someone from our team will reach out shortly to confirm availability and get that set up for you.`);
-      recoveryUpsellSent.delete(clientPhone);
-      return;
-    }
+// Recovery upsell YES intercept — short-circuits Maya for this reply only
+if (isRecoveryYes(clientPhone, incomingMessage)) {
+console.log('[RECOVERY YES] Client opted in — alerting Carolyn via Slack');
+await alertSlack(`[Maya] :muscle: Recovery Upsell — YES\nPhone: ${clientPhone}\nAction needed: Check availability and text client to confirm recovery service + time.`);
+await sendGhlSms(clientPhone, `Great — someone from our team will reach out shortly to confirm availability and get that set up for you.`);
+recoveryUpsellSent.delete(clientPhone);
+return;
+}
 
-    const mayaReply = await getMayaResponse(clientPhone, incomingMessage);
-    const cleanReply = mayaReply.replace(/THERAPIST_REQUESTED/g, '').trim();
-    console.log(`[MAYA REPLY] → "${cleanReply}"`);
+const mayaReply = await getMayaResponse(clientPhone, incomingMessage);
+const isBookingRequest = mayaReply.includes('BOOKING_REQUEST');
+if (mayaReply.includes('THERAPIST_REQUESTED')) therapistRequestedBy.add(clientPhone);
 
-    await sendGhlSms(clientPhone, cleanReply);
-    console.log(`[SMS SENT] To: ${clientPhone}`);
+const cleanReply = mayaReply
+.replace(/THERAPIST_REQUESTED/g, '')
+.replace(/BOOKING_REQUEST/g, '')
+.trim();
+console.log(`[MAYA REPLY] → "${cleanReply}"`);
 
-    const history = conversations.get(clientPhone) || [];
-    const addons = detectAddOns(history);
-    if (addons.length > 0) {
-      const contactRes = await fetch(
-        `https://services.leadconnectorhq.com/contacts/?locationId=${CONFIG.ghlLocationId}&query=${encodeURIComponent(clientPhone)}`,
-        { headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, Version: '2021-04-15' } }
-      );
-      if (contactRes.ok) {
-        const contactData = await contactRes.json();
-        const contactId = contactData?.contacts?.[0]?.id || null;
-        await writeAddOnsToContact(contactId, addons);
-      }
-    }
+await sendGhlSms(clientPhone, cleanReply);
+console.log(`[SMS SENT] To: ${clientPhone}`);
 
-    // Slack alert if booking link was just sent
-    if (cleanReply && (cleanReply.includes('api.gohighlevel.com') || cleanReply.toLowerCase().includes('booking link'))) {
-      await alertSlack(`[Maya] :calendar: Booking link sent\nPhone: ${clientPhone}\nAdd-ons: ${addons.join(', ') || 'none'}`);
-    }
+const history = conversations.get(clientPhone) || [];
+const addons = detectAddOns(history);
+if (addons.length > 0) {
+const contactRes = await fetch(
+`https://services.leadconnectorhq.com/contacts/?locationId=${CONFIG.ghlLocationId}&query=${encodeURIComponent(clientPhone)}`,
+{ headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, Version: '2021-04-15' } }
+);
+if (contactRes.ok) {
+const contactData = await contactRes.json();
+const contactId = contactData?.contacts?.[0]?.id || null;
+await writeAddOnsToContact(contactId, addons);
+}
+}
 
-    // Slack alert if client requested a specific therapist
-    if (mayaReply && mayaReply.includes('THERAPIST_REQUESTED')) {
-      await alertSlack(`[Maya] :bust_in_silhouette: Therapist preference requested\nPhone: ${clientPhone}\nAction needed: call or text client to confirm therapist and booking.`);
-    }
+// Hand-off: client gave a day/time → alert Carolyn to book it in Boulevard
+if (isBookingRequest) {
+await alertBookingRequest(clientPhone, addons, therapistRequestedBy.has(clientPhone));
+therapistRequestedBy.delete(clientPhone);
+}
 
-  } catch (err) {
-    console.error('[ERROR]', err.message);
-  }
+} catch (err) {
+console.error('[ERROR]', err.message);
+}
 });
 
 // ----------------------------------------------------------------------------
 // POST-BOOKING: Intake form + cancellation policy + recovery upsell
+// (Fires from GHL "Appointment Booked" workflow. Dormant while Boulevard
+// is the live calendar — kept intact for the GHL cutover.)
 // ----------------------------------------------------------------------------
 
 // Track phones that have been sent a recovery upsell (in-memory, resets on restart)
 const recoveryUpsellSent = new Set();
 
 function getRecoveryUpsell(concern) {
-  const c = (concern || '').toLowerCase();
-  if (c.includes('neck') || c.includes('shoulder') || c.includes('tension') || c.includes('back') || c.includes('pain') || c.includes('muscle')) {
-    return `One more thing — many clients with muscle tension love pairing their massage with infrared sauna beforehand. The heat loosens tissue so your therapist can work deeper. It's $40 for 20 min. Reply YES if you'd like us to check availability around your appointment.`;
-  }
-  if (c.includes('sport') || c.includes('recover') || c.includes('athletic') || c.includes('workout')) {
-    return `One more thing — for recovery-focused sessions, compression therapy pairs really well with massage. It flushes soreness and accelerates muscle repair. 30 min is $40. Reply YES if you'd like us to check availability around your appointment.`;
-  }
-  if (c.includes('stress') || c.includes('relax')) {
-    return `One more thing — float therapy is the ultimate complement to a relaxation massage. 60 minutes of complete sensory rest — it takes the experience to a different level. From $95. Reply YES if you'd like us to check availability around your appointment.`;
-  }
-  return `One more thing — many of our clients add a recovery experience before or after their session — sauna, float, cold plunge, and more. Reply YES if you'd like us to check what's available around your appointment time.`;
+const c = (concern || '').toLowerCase();
+if (c.includes('neck') || c.includes('shoulder') || c.includes('tension') || c.includes('back') || c.includes('pain') || c.includes('muscle')) {
+return `One more thing — many clients with muscle tension love pairing their massage with infrared sauna beforehand. The heat loosens tissue so your therapist can work deeper. It's $40 for 20 min. Reply YES if you'd like us to check availability around your appointment.`;
+}
+if (c.includes('sport') || c.includes('recover') || c.includes('athletic') || c.includes('workout')) {
+return `One more thing — for recovery-focused sessions, compression therapy pairs really well with massage. It flushes soreness and accelerates muscle repair. 30 min is $40. Reply YES if you'd like us to check availability around your appointment.`;
+}
+if (c.includes('stress') || c.includes('relax')) {
+return `One more thing — float therapy is the ultimate complement to a relaxation massage. 60 minutes of complete sensory rest — it takes the experience to a different level. From $95. Reply YES if you'd like us to check availability around your appointment.`;
+}
+return `One more thing — many of our clients add a recovery experience before or after their session — sauna, float, cold plunge, and more. Reply YES if you'd like us to check what's available around your appointment time.`;
 }
 
 app.post('/sms/post-booking', async (req, res) => {
-  res.sendStatus(200);
-  try {
-    const body = req.body;
-    const clientPhone = body.phone || body.contact?.phone;
-    const firstName = body.first_name || body.firstName || body.contact?.firstName || '';
-    const apptTime = body.appointment_t || body.appointmentTime || body.startTime || '';
-    const concern = body.concern || body.sessionType || '';
-    if (!clientPhone) return;
+res.sendStatus(200);
+try {
+const body = req.body;
+const clientPhone = body.phone || body.contact?.phone;
+const firstName = body.first_name || body.firstName || body.contact?.firstName || '';
+const apptTime = body.appointment_t || body.appointmentTime || body.startTime || '';
+const concern = body.concern || body.sessionType || '';
+if (!clientPhone) return;
 
-    let timeStr = '';
-    if (apptTime) {
-      try {
-        timeStr = new Date(apptTime).toLocaleString('en-US', {
-          weekday: 'short', month: 'long', day: 'numeric',
-          hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York'
-        });
-      } catch (_) { timeStr = apptTime; }
-    }
+let timeStr = '';
+if (apptTime) {
+try {
+timeStr = new Date(apptTime).toLocaleString('en-US', {
+weekday: 'short', month: 'long', day: 'numeric',
+hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York'
+});
+} catch (_) { timeStr = apptTime; }
+}
 
-    const namePart = firstName ? `${firstName}, ` : '';
-    const timePart = timeStr ? ` on ${timeStr}` : '';
-    const INTAKE_URL = 'https://sova-deploy-production.up.railway.app/intake';
+const namePart = firstName ? `${firstName}, ` : '';
+const timePart = timeStr ? ` on ${timeStr}` : '';
+const INTAKE_URL = `${CONFIG.linksBaseUrl}/intake`;
 
-    // MSG 1 — confirmation + intake form
-    await sendGhlSms(clientPhone, `${namePart}you're all set${timePart}. Before you come in, please fill out your intake form — it helps your therapist prepare: ${INTAKE_URL}`);
-    await new Promise(r => setTimeout(r, 1500));
+// MSG 1 — confirmation + intake form
+await sendGhlSms(clientPhone, `${namePart}you're all set${timePart}. Before you come in, please fill out your intake form — it helps your therapist prepare: ${INTAKE_URL}`);
+await new Promise(r => setTimeout(r, 1500));
 
-    // MSG 2 — cancellation policy
-    await sendGhlSms(clientPhone, `A quick note on our cancellation policy: 24 hours notice is required for any cancellations or changes. Less than 24 hours incurs a 50% charge. 6 hours or less incurs a 100% charge. To cancel or reschedule, call 203-304-1313.`);
-    await new Promise(r => setTimeout(r, 1500));
+// MSG 2 — cancellation policy
+await sendGhlSms(clientPhone, `A quick note on our cancellation policy: 24 hours notice is required for any cancellations or changes. Less than 24 hours incurs a 50% charge. 6 hours or less incurs a 100% charge. To cancel or reschedule, call 203-304-1313.`);
+await new Promise(r => setTimeout(r, 1500));
 
-    // MSG 3 — recovery upsell
-    const upsellMsg = getRecoveryUpsell(concern);
-    await sendGhlSms(clientPhone, upsellMsg);
-    recoveryUpsellSent.add(clientPhone);
+// MSG 3 — recovery upsell
+const upsellMsg = getRecoveryUpsell(concern);
+await sendGhlSms(clientPhone, upsellMsg);
+recoveryUpsellSent.add(clientPhone);
 
-    await alertSlack(`[Maya] :clipboard: Post-booking SMS sent → ${clientPhone}${timePart}`);
-    console.log(`[POST-BOOKING] SMS sent to ${clientPhone}`);
-  } catch (err) {
-    console.error('[POST-BOOKING ERROR]', err.message);
-  }
+await alertSlack(`[Maya] :clipboard: Post-booking SMS sent → ${clientPhone}${timePart}`);
+console.log(`[POST-BOOKING] SMS sent to ${clientPhone}`);
+} catch (err) {
+console.error('[POST-BOOKING ERROR]', err.message);
+}
 });
 
 // RECOVERY UPSELL YES HANDLER — fires when client replies YES after post-booking
 // Detected in /sms/inbound before Maya processes it
 function isRecoveryYes(phone, message) {
-  if (!recoveryUpsellSent.has(phone)) return false;
-  const m = message.toLowerCase().trim();
-  return m === 'yes' || m === 'yes please' || m === 'yeah' || m === 'yep' || m === 'sure' || m === 'definitely';
+if (!recoveryUpsellSent.has(phone)) return false;
+const m = message.toLowerCase().trim();
+return m === 'yes' || m === 'yes please' || m === 'yeah' || m === 'yep' || m === 'sure' || m === 'definitely';
 }
 
 // ----------------------------------------------------------------------------
 // INTAKE FORM SUBMISSION
 app.post('/intake/submit', async (req, res) => {
-  res.sendStatus(200);
-  try {
-    const d = req.body;
-    const contactId = d.contactId || null;
-    const phone = d.phone || null;
+res.sendStatus(200);
+try {
+const d = req.body;
+const contactId = d.contactId || null;
+const phone = d.phone || null;
 
-    // Build GHL note
-    const notes = [
-      'MASSAGE INTAKE FORM',
-      `Submitted: ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}`,
-      '',
-      `DOB: ${d.dob || 'n/a'}`,
-      `Address: ${[d.address, d.city, d.zip].filter(Boolean).join(', ')}`,
-      `Minor: ${d.isMinor || 'n/a'}`,
-      '',
-      `MEDICATIONS: ${d.medications || 'n/a'}`,
-      d.medicationsDetail ? `Detail: ${d.medicationsDetail}` : null,
-      '',
-      `PREGNANT: ${d.pregnant || 'n/a'}`,
-      d.pregnantWeeks ? `Weeks: ${d.pregnantWeeks}` : null,
-      d.pregnantRiskFactors ? `Risk: ${d.pregnantRiskFactors}` : null,
-      '',
-      `CHRONIC PAIN: ${d.chronicPain || 'none'}`,
-      d.painFactors ? `Factors: ${d.painFactors}` : null,
-      d.injuries ? `Injuries: ${d.injuries}` : null,
-      '',
-      `CONDITIONS: ${d.conditions || 'None'}`,
-      d.conditionsDetail ? `Detail: ${d.conditionsDetail}` : null,
-      '',
-      `FRAGRANCE ALLERGIES: ${d.fragranceAllergies || 'none'}`,
-      '',
-      `PREVIOUS MASSAGE: ${d.previousMassage || 'n/a'}`,
-      `MASSAGE TYPE SEEKING: ${d.massageType || 'n/a'}`,
-      `PRESSURE PREFERENCE: ${d.pressure || 'n/a'}`,
-      `SESSION GOALS: ${d.sessionGoals || 'n/a'}`,
-      `PROMOTIONS OPT-IN: ${d.promotions || 'n/a'}`,
-      '',
-      'AGREED TO POLICIES: Yes',
-    ].filter(l => l !== null).join('\n');
+// Build GHL note
+const notes = [
+'MASSAGE INTAKE FORM',
+`Submitted: ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}`,
+'',
+`DOB: ${d.dob || 'n/a'}`,
+`Address: ${[d.address, d.city, d.zip].filter(Boolean).join(', ')}`,
+`Minor: ${d.isMinor || 'n/a'}`,
+'',
+`MEDICATIONS: ${d.medications || 'n/a'}`,
+d.medicationsDetail ? `Detail: ${d.medicationsDetail}` : null,
+'',
+`PREGNANT: ${d.pregnant || 'n/a'}`,
+d.pregnantWeeks ? `Weeks: ${d.pregnantWeeks}` : null,
+d.pregnantRiskFactors ? `Risk: ${d.pregnantRiskFactors}` : null,
+'',
+`CHRONIC PAIN: ${d.chronicPain || 'none'}`,
+d.painFactors ? `Factors: ${d.painFactors}` : null,
+d.injuries ? `Injuries: ${d.injuries}` : null,
+'',
+`CONDITIONS: ${d.conditions || 'None'}`,
+d.conditionsDetail ? `Detail: ${d.conditionsDetail}` : null,
+'',
+`FRAGRANCE ALLERGIES: ${d.fragranceAllergies || 'none'}`,
+'',
+`PREVIOUS MASSAGE: ${d.previousMassage || 'n/a'}`,
+`MASSAGE TYPE SEEKING: ${d.massageType || 'n/a'}`,
+`PRESSURE PREFERENCE: ${d.pressure || 'n/a'}`,
+`SESSION GOALS: ${d.sessionGoals || 'n/a'}`,
+`PROMOTIONS OPT-IN: ${d.promotions || 'n/a'}`,
+'',
+'AGREED TO POLICIES: Yes',
+].filter(l => l !== null).join('\n');
 
-    if (contactId) {
-      try {
-        await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}/notes`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, 'Content-Type': 'application/json', Version: '2021-04-15' },
-          body: JSON.stringify({ body: notes, userId: contactId }),
-        });
-        await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
-          method: 'PUT',
-          headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, 'Content-Type': 'application/json', Version: '2021-04-15' },
-          body: JSON.stringify({
-            firstName: d.firstName, lastName: d.lastName,
-            email: d.email, phone: d.phone,
-            address1: d.address, city: d.city, postalCode: d.zip,
-            dateOfBirth: d.dob, tags: ['Intake Form Completed'],
-          }),
-        });
-      } catch (err) { console.error('[INTAKE] GHL write error:', err.message); }
-    }
-    await alertSlack(`[Maya] :clipboard: Intake submitted\n${d.firstName} ${d.lastName} (${phone})\nConditions: ${d.conditions || 'none'}`);
-    console.log(`[INTAKE] Submitted for ${d.firstName} ${d.lastName}`);
-  } catch (err) { console.error('[INTAKE ERROR]', err.message); }
+if (contactId) {
+try {
+await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}/notes`, {
+method: 'POST',
+headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, 'Content-Type': 'application/json', Version: '2021-04-15' },
+body: JSON.stringify({ body: notes, userId: contactId }),
+});
+await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
+method: 'PUT',
+headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, 'Content-Type': 'application/json', Version: '2021-04-15' },
+body: JSON.stringify({
+firstName: d.firstName, lastName: d.lastName,
+email: d.email, phone: d.phone,
+address1: d.address, city: d.city, postalCode: d.zip,
+dateOfBirth: d.dob, tags: ['Intake Form Completed'],
+}),
+});
+} catch (err) { console.error('[INTAKE] GHL write error:', err.message); }
+}
+await alertSlack(`[Maya] :clipboard: Intake submitted\n${d.firstName} ${d.lastName} (${phone})\nConditions: ${d.conditions || 'none'}`);
+console.log(`[INTAKE] Submitted for ${d.firstName} ${d.lastName}`);
+} catch (err) { console.error('[INTAKE ERROR]', err.message); }
 });
 
 // PREFERENCES FORM SUBMISSION
 app.post('/preferences/submit', async (req, res) => {
-  res.sendStatus(200);
-  try {
-    const d = req.body;
-    const contactId = d.contactId || null;
-    const notes = [
-      'MASSAGE PREFERENCES',
-      `Submitted: ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}`,
-      '',
-      `STANDARDS: ${d.standards || 'not selected'}`,
-      `CONVERSATION: ${d.conversation || 'not answered'}`,
-      `ADD-ONS REQUESTED: ${d.addons || 'none'}`,
-    ].join('\n');
-    if (contactId) {
-      try {
-        await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}/notes`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, 'Content-Type': 'application/json', Version: '2021-04-15' },
-          body: JSON.stringify({ body: notes, userId: contactId }),
-        });
-        // Also write add-ons to the Maya add-ons custom field if present
-        if (d.addons && d.addons !== 'No Thank You') {
-          await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
-            method: 'PUT',
-            headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, 'Content-Type': 'application/json', Version: '2021-07-28' },
-            body: JSON.stringify({ customFields: [{ id: '8EOok3x105CyQIIJyMtx', value: d.addons }] }),
-          });
-        }
-      } catch (err) { console.error('[PREFS] GHL write error:', err.message); }
-    }
-    await alertSlack(`[Maya] :memo: Preferences submitted\n${d.firstName || 'Client'}\nStandards: ${d.standards || 'none'}\nConversation: ${d.conversation || 'n/a'}\nAdd-ons: ${d.addons || 'none'}`);
-    console.log('[PREFS] Submitted');
-  } catch (err) { console.error('[PREFS ERROR]', err.message); }
+res.sendStatus(200);
+try {
+const d = req.body;
+const contactId = d.contactId || null;
+const notes = [
+'MASSAGE PREFERENCES',
+`Submitted: ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}`,
+'',
+`STANDARDS: ${d.standards || 'not selected'}`,
+`CONVERSATION: ${d.conversation || 'not answered'}`,
+`ADD-ONS REQUESTED: ${d.addons || 'none'}`,
+].join('\n');
+if (contactId) {
+try {
+await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}/notes`, {
+method: 'POST',
+headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, 'Content-Type': 'application/json', Version: '2021-04-15' },
+body: JSON.stringify({ body: notes, userId: contactId }),
+});
+// Also write add-ons to the Maya add-ons custom field if present
+if (d.addons && d.addons !== 'No Thank You') {
+await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
+method: 'PUT',
+headers: { Authorization: `Bearer ${CONFIG.ghlBearerToken}`, 'Content-Type': 'application/json', Version: '2021-07-28' },
+body: JSON.stringify({ customFields: [{ id: '8EOok3x105CyQIIJyMtx', value: d.addons }] }),
+});
+}
+} catch (err) { console.error('[PREFS] GHL write error:', err.message); }
+}
+await alertSlack(`[Maya] :memo: Preferences submitted\n${d.firstName || 'Client'}\nStandards: ${d.standards || 'none'}\nConversation: ${d.conversation || 'n/a'}\nAdd-ons: ${d.addons || 'none'}`);
+console.log('[PREFS] Submitted');
+} catch (err) { console.error('[PREFS ERROR]', err.message); }
 });
 
 // FORM PAGES
@@ -577,12 +618,13 @@ app.get('/preferences', (req, res) => { res.sendFile(path.join(__dirname, 'publi
 // HEALTH CHECK
 // ----------------------------------------------------------------------------
 app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    agent: CONFIG.agentName,
-    client: CONFIG.businessName,
-    timestamp: new Date().toISOString(),
-  });
+res.json({
+status: 'ok',
+agent: CONFIG.agentName,
+client: CONFIG.businessName,
+linksBaseUrl: CONFIG.linksBaseUrl,
+timestamp: new Date().toISOString(),
+});
 });
 
 // ----------------------------------------------------------------------------
@@ -590,9 +632,10 @@ app.get('/health', (req, res) => {
 // ----------------------------------------------------------------------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`\n✓ Sova SMS Server running on port ${PORT}`);
-  console.log(` Agent: ${CONFIG.agentName}`);
-  console.log(` Client: ${CONFIG.businessName}`);
-  console.log(` Webhook: POST /sms/inbound`);
-  console.log(` Health: GET /health\n`);
+console.log(`\n✓ Sova SMS Server running on port ${PORT}`);
+console.log(` Agent: ${CONFIG.agentName}`);
+console.log(` Client: ${CONFIG.businessName}`);
+console.log(` Links: ${CONFIG.linksBaseUrl}`);
+console.log(` Webhook: POST /sms/inbound`);
+console.log(` Health: GET /health\n`);
 });
