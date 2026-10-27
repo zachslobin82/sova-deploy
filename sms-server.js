@@ -6,11 +6,12 @@
 // GHL Workflow → POST /sms/inbound (this server)
 // → GPT-4.1 processes with full TMW knowledge base
 // → GHL API sends SMS reply to client
-// → Booking requests + cancellations fire Slack + SMS alerts to Carolyn
+// → Every alert + every conversation posts to TMW Slack (#mayaalerts)
+//   via SLACK_WEBHOOK_URL. No SMS alerts to staff (Oct 2026).
 //
 // BOOKING MODE (Sep 2026): Boulevard is still the live calendar.
 // Maya does NOT send booking links. She collects the request and hands it
-// to Carolyn, who books it in Boulevard and confirms with the client.
+// to the front desk via Slack; they book it in Boulevard and confirm with the client.
 //
 // Run: node sms-server.js
 // ============================================================================
@@ -30,7 +31,6 @@ openAiApiKey: process.env.OPENAI_API_KEY || 'YOUR_OPENAI_API_KEY',
 ghlBearerToken: process.env.GHL_BEARER_TOKEN || 'pit-fb285c5d-a16c-45be-adce-f35d0722bd52',
 ghlLocationId: process.env.GHL_LOCATION_ID || 'i354kGTSmTlt3zeEVsCG',
 ghlFromNumber: process.env.GHL_FROM_NUMBER || '+18605904699',
-carolynCell: '+18456121174',
 businessName: 'Therapeutic Massage & Wellness',
 agentName: 'Maya',
 mainPhone: '203-304-1313',
@@ -116,7 +116,7 @@ RECOVERY: Float $95/60min $125/90min $160/120min | Infrared Sauna $40/20min $50/
 REDIRECT TO CALL (203-304-1313): Couples services | Jenna Dallinga specifically | Memberships | Brow and Lash Bar | Lymphatic Drainage | Chemical Peels | Cosmetic services (brows/lashes)
 
 CANCELLATION
-24hr notice required. No-show = 100% charge. Handle cancellations warmly, note it for Carolyn, immediately offer to rebook.
+24hr notice required. No-show = 100% charge. Handle cancellations warmly, note it for the front desk, immediately offer to rebook.
 
 NEVER: Mention Boulevard | Send links | Say an appointment is booked or confirmed | Send more than one question per message | Push upsell more than once | Write more than 2-3 sentences`;
 
@@ -254,23 +254,24 @@ return await smsRes.json();
 }
 
 // ----------------------------------------------------------------------------
-// ALERT CAROLYN — CANCELLATION
+// SLACK HELPERS
 // ----------------------------------------------------------------------------
-async function alertCarolyn(clientPhone, clientMessage) {
-const alertMessage =
-`Maya Alert: Client (${clientPhone}) cancelled via text.\n` +
-`Their message: "${clientMessage}"\n` +
-`Please cancel in Boulevard and free the slot.`;
-try {
-await sendGhlSms(CONFIG.carolynCell, alertMessage);
-console.log(`[CAROLYN ALERT] Sent to ${CONFIG.carolynCell}`);
-} catch (err) {
-console.error(`[CAROLYN ALERT] Failed to send: ${err.message}`);
+function who(name, phone) {
+return name ? `${name} (${phone})` : phone;
 }
+
+// Mirrors every Maya exchange into Slack so the team can follow along
+// without logging into GHL.
+async function postConversation(name, phone, clientMsg, mayaMsg) {
+await alertSlack(
+`:speech_balloon: *${who(name, phone)}*\n` +
+`> *Client:* ${clientMsg}\n` +
+(mayaMsg ? `> *Maya:* ${mayaMsg}` : '')
+);
 }
 
 // ----------------------------------------------------------------------------
-// ALERT CAROLYN — BOOKING REQUEST (hand-off to front desk)
+// BOOKING REQUEST (hand-off to front desk via Slack)
 // ----------------------------------------------------------------------------
 function buildRequestSummary(clientPhone) {
 const history = conversations.get(clientPhone) || [];
@@ -279,26 +280,15 @@ const clientLines = history.filter(m => m.role === 'user').map(m => `- ${m.conte
 return clientLines.slice(-8).join('\n');
 }
 
-async function alertBookingRequest(clientPhone, addons, therapistRequested) {
+async function alertBookingRequest(name, clientPhone, addons, therapistRequested) {
 const summary = buildRequestSummary(clientPhone);
 const addonText = addons.length ? addons.join(', ') : 'none';
 const therapistText = therapistRequested ? 'YES — see their messages' : 'no preference';
 
-const smsText =
-`Maya Booking Request: ${clientPhone}\n` +
-`Add-ons: ${addonText} | Therapist: ${therapistText}\n` +
-`What they said:\n${summary}\n` +
-`Please book in Boulevard and text them to confirm.`;
-
-try {
-await sendGhlSms(CONFIG.carolynCell, smsText);
-} catch (err) {
-console.error('[BOOKING REQUEST] Carolyn SMS failed:', err.message);
-}
-
 await alertSlack(
-`[Maya] :calendar: Booking request — needs to be booked in Boulevard\n` +
-`Phone: ${clientPhone}\nAdd-ons: ${addonText}\nTherapist: ${therapistText}\n` +
+`:calendar: *BOOKING REQUEST — ${who(name, clientPhone)}*\n` +
+`*To do:* book in Boulevard, then text them to confirm.\n` +
+`Add-ons: ${addonText} | Therapist: ${therapistText}\n` +
 `What they said:\n${summary}`
 );
 }
@@ -378,19 +368,30 @@ console.warn('[INBOUND SMS] Could not extract phone or message from payload:', b
 return;
 }
 
+const clientName =
+body.full_name ||
+[body.first_name, body.last_name].filter(Boolean).join(' ') ||
+body.contact?.name ||
+'';
+
 console.log(`[INBOUND SMS] From: ${clientPhone} | Message: "${incomingMessage}"`);
 
 if (isCancellation(incomingMessage)) {
-console.log('[CANCELLATION DETECTED] Alerting Carolyn...');
-await alertCarolyn(clientPhone, incomingMessage);
-await alertSlack(`[Maya] :warning: Cancellation\nFrom: ${clientPhone}\nMsg: "${incomingMessage}"`);
+console.log('[CANCELLATION DETECTED] Alerting Slack...');
+await alertSlack(
+`:warning: *CANCELLATION — ${who(clientName, clientPhone)}*\n` +
+`*To do:* cancel in Boulevard and free the slot.\n` +
+`Their message: "${incomingMessage}"`
+);
 }
 
 // Recovery upsell YES intercept — short-circuits Maya for this reply only
 if (isRecoveryYes(clientPhone, incomingMessage)) {
-console.log('[RECOVERY YES] Client opted in — alerting Carolyn via Slack');
-await alertSlack(`[Maya] :muscle: Recovery Upsell — YES\nPhone: ${clientPhone}\nAction needed: Check availability and text client to confirm recovery service + time.`);
-await sendGhlSms(clientPhone, `Great — someone from our team will reach out shortly to confirm availability and get that set up for you.`);
+console.log('[RECOVERY YES] Client opted in — alerting Slack');
+await alertSlack(`:muscle: *RECOVERY ADD-ON — ${who(clientName, clientPhone)}*\n*To do:* check availability and text them to confirm the service + time.`);
+const recoveryReply = `Great — someone from our team will reach out shortly to confirm availability and get that set up for you.`;
+await sendGhlSms(clientPhone, recoveryReply);
+await postConversation(clientName, clientPhone, incomingMessage, recoveryReply);
 recoveryUpsellSent.delete(clientPhone);
 return;
 }
@@ -407,6 +408,7 @@ console.log(`[MAYA REPLY] → "${cleanReply}"`);
 
 await sendGhlSms(clientPhone, cleanReply);
 console.log(`[SMS SENT] To: ${clientPhone}`);
+await postConversation(clientName, clientPhone, incomingMessage, cleanReply);
 
 const history = conversations.get(clientPhone) || [];
 const addons = detectAddOns(history);
@@ -422,14 +424,38 @@ await writeAddOnsToContact(contactId, addons);
 }
 }
 
-// Hand-off: client gave a day/time → alert Carolyn to book it in Boulevard
+// Hand-off: client gave a day/time → alert the front desk in Slack
 if (isBookingRequest) {
-await alertBookingRequest(clientPhone, addons, therapistRequestedBy.has(clientPhone));
+await alertBookingRequest(clientName, clientPhone, addons, therapistRequestedBy.has(clientPhone));
 therapistRequestedBy.delete(clientPhone);
 }
 
 } catch (err) {
 console.error('[ERROR]', err.message);
+await alertSlack(`:rotating_light: *Maya error* — a client text may not have been answered.\n${err.message}`);
+}
+});
+
+// ----------------------------------------------------------------------------
+// MISSED CALL ALERT
+// Fires from the GHL "Recipe - Auto Missed Call Text-Back" workflow
+// (Webhook action, after "SMS to Lead").
+// ----------------------------------------------------------------------------
+app.post('/missed-call', async (req, res) => {
+res.status(200).json({ received: true });
+try {
+const body = req.body || {};
+const phone = body.phone || body.contact?.phone || body.from || 'unknown number';
+const name =
+body.full_name ||
+[body.first_name, body.last_name].filter(Boolean).join(' ') ||
+'';
+await alertSlack(
+`:telephone_receiver: *MISSED CALL — ${who(name, phone)}*\n` +
+`Maya texted them. Their replies will show up here.`
+);
+} catch (err) {
+console.error('[MISSED CALL] Failed:', err.message);
 }
 });
 
